@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Environment files - DO NOT commit secrets
+backend/.env
+# Keep .env.example
+!backend/.env.example
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+# Uploads
+backend/uploads/
+
+# Logs
+*.log
