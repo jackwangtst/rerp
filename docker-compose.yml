@@ -10,8 +10,8 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./docs/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
-    ports:
-      - "5432:5432"   # 开发时本机直连；生产可去掉
+    # ports:
+    #   - "5432:5432"   # 如需本机直连，改为 "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U rerp"]
       interval: 10s
@@ -45,8 +45,8 @@ services:
     container_name: rerp_nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:80"
+      # - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
@@ -54,6 +54,14 @@ services:
       - ./uploads:/app/uploads:ro
     depends_on:
       - backend
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: rerp_cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token eyJhIjoiYjk3MmVkOWU0ZTBlMDg5NjU0OWQ3MWFkZTk5Y2ExNWIiLCJ0IjoiZTk5MTY0NTktNDAyMy00ZjI1LWJmMTktN2FkOWI5MDkwZDQ1IiwicyI6IlpqUXpZakU1TnpRdFpXVmpOUzAwWTJFNUxUZzRNR0V0Tm1VM01qY3lNamN6TXpKaiJ9
+    depends_on:
+      - nginx
 
 volumes:
   pg_data:
