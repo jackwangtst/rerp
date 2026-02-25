@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api/request'
 
 interface PaymentItem {
@@ -51,6 +51,13 @@ const form = reactive({
   payment_method: '对公转账',
   remark: '',
 })
+
+async function handleDelete(row: PaymentItem) {
+  await ElMessageBox.confirm('确认删除该收款记录？', '删除确认', { type: 'warning' })
+  await request.delete(`/quotation-payments/${row.id}`)
+  ElMessage.success('已删除')
+  loadList()
+}
 
 function openCollect(row: PaymentItem) {
   editingItem.value = row
@@ -146,9 +153,10 @@ onMounted(() => loadList())
         <el-table-column label="收款日期" prop="received_date" width="110" />
         <el-table-column label="收款方式" prop="payment_method" width="100" />
         <el-table-column label="备注" prop="remark" min-width="120" show-overflow-tooltip />
-        <el-table-column label="操作" width="90" fixed="right">
+        <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openCollect(row)">登记收款</el-button>
+            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>

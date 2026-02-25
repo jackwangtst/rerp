@@ -104,3 +104,17 @@ async def update_payment(
     await db.commit()
     await db.refresh(rec)
     return Resp.ok(QuotationPaymentOut.model_validate(rec))
+
+
+@router.delete("/{payment_id}", response_model=Resp)
+async def delete_payment(
+    payment_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: SysUser = Depends(get_current_user),
+):
+    rec = (await db.execute(select(QuotationPayment).where(QuotationPayment.id == payment_id))).scalar_one_or_none()
+    if not rec:
+        raise HTTPException(404, "记录不存在")
+    await db.delete(rec)
+    await db.commit()
+    return Resp.ok(message="已删除")
