@@ -32,4 +32,4 @@ class Expense(Base, UUIDMixin, TimestampMixin):
 
     contract = relationship("Contract", foreign_keys=[contract_id], lazy="select")
     customer = relationship("Customer", foreign_keys=[customer_id], lazy="select")
-    creator = relationship("User", foreign_keys=[created_by], lazy="select")
+    creator = relationship("SysUser", foreign_keys=[created_by], lazy="select")
