@@ -343,21 +343,32 @@ def generate_quotation_pdf(
     # ── 落款 ──────────────────────────────────────────────────
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#aaaaaa")))
     story.append(Spacer(1, 3*mm))
+
+    left_lines = [
+        f"<b>负责人签字&nbsp;&nbsp;&nbsp;&nbsp;公章</b>",
+        f"{COMPANY_ZH}",
+        f"业务员：{sales_person}",
+    ]
+    right_lines = [
+        "<b>授权人签字&nbsp;&nbsp;&nbsp;&nbsp;公司公章</b>",
+        customer_name or "",
+    ]
+    if deliver_to_address:
+        right_lines.append(deliver_to_address)
+
     sign_data = [
-        [Paragraph("负责人签字&nbsp;&nbsp;&nbsp;&nbsp;公章", S("sc", fontSize=9, alignment=TA_LEFT, leading=14)),
-         Paragraph("授权人签字&nbsp;&nbsp;&nbsp;&nbsp;公司公章", S("cc", fontSize=9, alignment=TA_RIGHT, leading=14))],
-        [Paragraph(f"{COMPANY_ZH}", S("scn", fontSize=8.5, alignment=TA_LEFT, leading=13, textColor=colors.HexColor("#1a3a6b"))),
-         Paragraph(f"业务员：{sales_person}", S("sp", fontSize=8.5, alignment=TA_RIGHT, leading=13))],
+        [Paragraph("<br/>".join(left_lines),  S("sc", fontSize=9, alignment=TA_LEFT,  leading=15, textColor=colors.HexColor("#1a3a6b"))),
+         Paragraph("<br/>".join(right_lines), S("cc", fontSize=9, alignment=TA_RIGHT, leading=15))],
     ]
     sign_table = Table(sign_data, colWidths=[W*0.5, W*0.5])
     sign_table.setStyle(TableStyle([
-        ("TOPPADDING",(0,0),(-1,-1),4),
-        ("BOTTOMPADDING",(0,0),(-1,-1),4),
-        ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
+        ("TOPPADDING",    (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+        ("VALIGN",        (0,0), (-1,-1), "TOP"),
     ]))
     story.append(sign_table)
     story.append(Spacer(1, 12*mm))
-    story.append(Paragraph(f"签字：___________________", s_footer))
+    story.append(Paragraph("签字：___________________", s_footer))
 
     doc.build(story)
     return buf.getvalue()
