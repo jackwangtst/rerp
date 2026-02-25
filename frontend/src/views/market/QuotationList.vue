@@ -42,6 +42,51 @@ const activeQuot = ref<any>(null)
 const statusOptions = ['草稿', '待审批', '已发送', '已接受', '已拒绝', '已过期']
 const ynOptions = ['Y', 'N', '-']
 
+// 英文国家名 → 中文对照
+const COUNTRY_ZH: Record<string, string> = {
+  'Afghanistan': '阿富汗', 'Albania': '阿尔巴尼亚', 'Algeria': '阿尔及利亚',
+  'Angola': '安哥拉', 'Argentina': '阿根廷', 'Armenia': '亚美尼亚',
+  'Australia': '澳大利亚', 'Austria': '奥地利', 'Azerbaijan': '阿塞拜疆',
+  'Bahrain': '巴林', 'Bangladesh': '孟加拉国', 'Belarus': '白俄罗斯',
+  'Belgium': '比利时', 'Bolivia': '玻利维亚', 'Bosnia': '波斯尼亚',
+  'Brazil': '巴西', 'Bulgaria': '保加利亚', 'Cambodia': '柬埔寨',
+  'Canada': '加拿大', 'Chile': '智利', 'China': '中国',
+  'Colombia': '哥伦比亚', 'Croatia': '克罗地亚', 'Cuba': '古巴',
+  'Cyprus': '塞浦路斯', 'Czech Republic': '捷克', 'Denmark': '丹麦',
+  'Ecuador': '厄瓜多尔', 'Egypt': '埃及', 'Ethiopia': '埃塞俄比亚',
+  'Finland': '芬兰', 'France': '法国', 'Germany': '德国',
+  'Ghana': '加纳', 'Greece': '希腊', 'Guatemala': '危地马拉',
+  'Hong Kong': '香港', 'Hungary': '匈牙利', 'India': '印度',
+  'Indonesia': '印度尼西亚', 'Iran': '伊朗', 'Iraq': '伊拉克',
+  'Ireland': '爱尔兰', 'Israel': '以色列', 'Italy': '意大利',
+  'Japan': '日本', 'Jordan': '约旦', 'Kazakhstan': '哈萨克斯坦',
+  'Kenya': '肯尼亚', 'Korea': '韩国', 'Kuwait': '科威特',
+  'Laos': '老挝', 'Lebanon': '黎巴嫩', 'Libya': '利比亚',
+  'Luxembourg': '卢森堡', 'Macau': '澳门', 'Malaysia': '马来西亚',
+  'Mexico': '墨西哥', 'Mongolia': '蒙古', 'Morocco': '摩洛哥',
+  'Myanmar': '缅甸', 'Nepal': '尼泊尔', 'Netherlands': '荷兰',
+  'New Zealand': '新西兰', 'Nigeria': '尼日利亚', 'Norway': '挪威',
+  'Oman': '阿曼', 'Pakistan': '巴基斯坦', 'Panama': '巴拿马',
+  'Peru': '秘鲁', 'Philippines': '菲律宾', 'Poland': '波兰',
+  'Portugal': '葡萄牙', 'Qatar': '卡塔尔', 'Romania': '罗马尼亚',
+  'Russia': '俄罗斯', 'Saudi Arabia': '沙特阿拉伯', 'Serbia': '塞尔维亚',
+  'Singapore': '新加坡', 'Slovakia': '斯洛伐克', 'Slovenia': '斯洛文尼亚',
+  'South Africa': '南非', 'Spain': '西班牙', 'Sri Lanka': '斯里兰卡',
+  'Sudan': '苏丹', 'Sweden': '瑞典', 'Switzerland': '瑞士',
+  'Syria': '叙利亚', 'Taiwan': '台湾', 'Thailand': '泰国',
+  'Tunisia': '突尼斯', 'Turkey': '土耳其', 'UAE': '阿联酋',
+  'Ukraine': '乌克兰', 'United Kingdom': '英国', 'United States': '美国',
+  'Uruguay': '乌拉圭', 'Uzbekistan': '乌兹别克斯坦', 'Venezuela': '委内瑞拉',
+  'Vietnam': '越南', 'Yemen': '也门', 'Zimbabwe': '津巴布韦',
+  'Abu Dhabi': '阿布扎比', 'Tanzania': '坦桑尼亚', 'Uganda': '乌干达',
+  'Mozambique': '莫桑比克', 'Zambia': '赞比亚', 'Cameroon': '喀麦隆',
+}
+
+function countryLabel(en: string): string {
+  const zh = COUNTRY_ZH[en]
+  return zh ? `${en} / ${zh}` : en
+}
+
 // 价格库：国家列表 + 按国家加载认证项目
 const countryOptions = ref<string[]>([])
 const catalogByCountry = ref<Record<string, PriceCatalogSearchItem[]>>({})
@@ -491,7 +536,7 @@ onMounted(() => { loadList(); loadCountries(); loadAllCustomers() })
                 placeholder="选择或输入"
                 @change="onCountryChange(row)"
               >
-                <el-option v-for="c in countryOptions" :key="c" :label="c" :value="c" />
+                <el-option v-for="c in countryOptions" :key="c" :label="countryLabel(c)" :value="c" />
               </el-select>
             </template>
           </el-table-column>
@@ -626,7 +671,7 @@ onMounted(() => { loadList(); loadCountries(); loadAllCustomers() })
         <el-table :data="activeQuot.items" size="small" border style="margin-bottom:10px">
           <el-table-column type="index" label="No" width="45" align="center" />
           <el-table-column prop="country" label="国家" width="80" align="center">
-            <template #default="{ row }">{{ row.country || '-' }}</template>
+            <template #default="{ row }">{{ row.country ? countryLabel(row.country) : '-' }}</template>
           </el-table-column>
           <el-table-column prop="name" label="认证项目" min-width="120" />
           <el-table-column prop="standard" label="认证标准" width="110" align="center" />
