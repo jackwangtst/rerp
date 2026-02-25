@@ -87,7 +87,7 @@ async def expense_stats(
     from app.models.contract import PaymentRecord
 
     exp_q = select(func.sum(Expense.amount))
-    rev_q = select(func.sum(PaymentRecord.amount))
+    rev_q = select(func.sum(PaymentRecord.received_amount))
 
     filters_exp = []
     filters_rev = []
