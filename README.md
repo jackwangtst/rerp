@@ -10,6 +10,7 @@
 | 后端 | Python 3.12 + FastAPI + SQLAlchemy 2.0（异步） |
 | 数据库 | PostgreSQL 16 |
 | 反向代理 | Nginx |
+| 外网穿透 | Cloudflare Tunnel |
 | 容器化 | Docker + Docker Compose |
 
 ---
@@ -299,23 +300,32 @@ docker compose restart nginx
 ## 升级流程
 
 ```bash
-# 1. 拉取新代码
-git pull
-
-# 2. 备份数据库
+# 1. 备份数据库
+cd /volume1/docker/rerp
 docker compose exec db pg_dump -U rerp rerp > backups/pre_upgrade_$(date +%Y%m%d).sql
 
+# 2. 拉取新代码
+git pull
+
 # 3. 重新构建前端
-docker compose --profile build run --rm frontend
+docker compose run --rm frontend
+docker compose restart nginx
 
-# 4. 重新构建并重启后端
-docker compose build backend
-docker compose up -d
+# 4. 重启后端（代码通过 volume 挂载，无需重新构建）
+docker compose restart backend
 
-# 5. 验证服务正常
+# 5. 如有新数据库表，手动执行 SQL
+docker compose exec -it db psql -U rerp -d rerp
+
+# 6. 验证服务正常
 docker compose ps
 docker compose logs --tail=50 backend
 ```
+
+> **仅当修改了 `requirements.txt` 或 `Dockerfile` 时**才需要重新构建镜像：
+> ```bash
+> docker compose up -d --build backend
+> ```
 
 ---
 
@@ -385,50 +395,34 @@ docker compose --profile build run --rm frontend
 
 ---
 
-### 四、配置 Nginx（仅监听 HTTP，由 DSM 反向代理或 Cloudflare 处理 HTTPS）
+### 四、配置 Nginx（仅监听 HTTP，Cloudflare Tunnel 处理 HTTPS）
 
-编辑 `nginx/nginx.conf`，将内容替换为仅监听 80 端口：
+`nginx/nginx.conf` 已配置为仅监听 80 端口，无需修改。
 
-```nginx
-server {
-    listen 80;
-    server_name _;
-
-    root /usr/share/nginx/html;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    location /api/ {
-        proxy_pass         http://backend:8000;
-        proxy_set_header   Host $host;
-        proxy_set_header   X-Real-IP $remote_addr;
-        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto $scheme;
-        proxy_read_timeout 60s;
-    }
-
-    location /uploads/ {
-        proxy_pass       http://backend:8000;
-        proxy_set_header Host $host;
-    }
-}
-```
-
-同时编辑 `docker-compose.yml`，将 nginx 的 ports 改为只暴露 80：
-
-```yaml
-ports:
-  - "8080:80"   # 用 8080 避免与 DSM 默认 80 端口冲突
-```
-
-> **注意：** 群晖 DSM 默认占用 80/443 端口，建议将 nginx 映射到 8080（或其他空闲端口）。
+`docker-compose.yml` 中 nginx 映射到 8080 端口（避免与 DSM 默认端口冲突）。
 
 ---
 
-### 五、启动服务
+### 五、配置 Cloudflare Tunnel（外网访问）
+
+1. 登录 [Cloudflare Zero Trust](https://one.dash.cloudflare.com) → Networks → Tunnels → Create a tunnel
+2. 选择 Docker，复制 token
+3. 编辑 `docker-compose.yml`，将 cloudflared 服务的 token 替换为你的 token：
+
+```yaml
+cloudflared:
+  command: tunnel --no-autoupdate run --token <YOUR_TOKEN>
+```
+
+4. 在 Tunnel 配置页 → Routes → Published application：
+   - Domain: 你的域名（需托管在 Cloudflare）
+   - Service URL: `http://nginx:80`
+
+> **注意：** 域名需先迁移 NS 到 Cloudflare（免费）。
+
+---
+
+### 六、启动服务
 
 ```bash
 cd /volume1/docker/rerp
@@ -436,7 +430,7 @@ docker compose up -d
 docker compose logs -f
 ```
 
-稍等约 30 秒，待 PostgreSQL 完成初始化。验证：
+稍等约 1-2 分钟，待所有服务启动完成（db 健康检查通过后 backend 才启动）。验证：
 
 ```bash
 docker compose ps
@@ -447,30 +441,6 @@ docker compose ps
 ---
 
 ### 六、初始化管理员账号
-
-```bash
-docker compose exec backend python -c "
-import asyncio
-from app.core.database import AsyncSessionLocal
-from app.models.user import SysUser
-from app.core.security import get_password_hash
-
-async def create_admin():
-    async with AsyncSessionLocal() as db:
-        user = SysUser(
-            username='admin',
-            hashed_password=get_password_hash('admin123'),
-            full_name='管理员',
-            role='admin',
-            is_active=True
-        )
-        db.add(user)
-        await db.commit()
-    print('管理员账号已创建')
-
-asyncio.run(create_admin())
-"
-```
 
 ---
 
@@ -493,8 +463,7 @@ asyncio.run(create_admin())
 | 场景 | 地址 |
 |------|------|
 | 局域网直接访问 | `http://<NAS_IP>:8080` |
-| DSM 反向代理（HTTPS） | `https://<你的域名>` |
-| Cloudflare Tunnel | 由 Tunnel 配置决定 |
+| Cloudflare Tunnel | `https://<你配置的域名>` |
 | API 文档 | `http://<NAS_IP>:8080/api/docs` |
 
 ---
@@ -503,45 +472,52 @@ asyncio.run(create_admin())
 
 ```bash
 # 查看服务状态
-docker compose -f /volume1/docker/rerp/docker-compose.yml ps
+cd /volume1/docker/rerp
+docker compose ps
 
 # 查看后端日志
-docker compose -f /volume1/docker/rerp/docker-compose.yml logs -f backend
+docker compose logs -f backend
+
+# 查看 Tunnel 日志
+docker compose logs -f cloudflared
 
 # 重启服务
-docker compose -f /volume1/docker/rerp/docker-compose.yml restart
+docker compose restart
+
+# 更新代码后重启后端（无需重新构建）
+git pull
+docker compose restart backend
+
+# 更新前端
+git pull
+docker compose run --rm frontend
+docker compose restart nginx
+
+# 只有修改了 requirements.txt 或 Dockerfile 才需要重新构建
+docker compose up -d --build backend
 
 # 备份数据库
-docker compose -f /volume1/docker/rerp/docker-compose.yml exec db \
-  pg_dump -U rerp rerp > /volume1/docker/rerp/backups/rerp_$(date +%Y%m%d_%H%M%S).sql
-
-# 更新部署（拉取新代码后）
-cd /volume1/docker/rerp
-git pull
-docker compose --profile build run --rm frontend
-docker compose build backend
-docker compose up -d
+docker compose exec db pg_dump -U rerp rerp > backups/rerp_$(date +%Y%m%d_%H%M%S).sql
 ```
 
+---
 
+## 常见问题
 
 **后端无法连接数据库**
 
 ```bash
-# 检查数据库健康状态
 docker compose ps db
 docker compose logs db
 ```
 
-确认 `backend/.env` 中 `DATABASE_URL` 的主机名为 `db`（Docker 内部服务名），而非 `localhost`。
+确认 `backend/.env` 中 `DATABASE_URL` 的主机名为 `db`，而非 `localhost`。
 
 **Nginx 返回 502 Bad Gateway**
 
 ```bash
 docker compose logs nginx
 docker compose logs backend
-# 确认后端服务已正常启动
-docker compose ps backend
 ```
 
 **前端页面空白或 404**
@@ -552,8 +528,12 @@ docker compose ps backend
 ls frontend/dist/
 ```
 
-如果为空，重新执行第三步构建前端。
+如果为空，重新执行前端构建步骤。
 
-**SSL 证书错误**
+**外网无法访问**
 
-检查 `nginx/ssl/` 目录下证书文件是否存在。如使用 Cloudflare Tunnel，参考方案 A 修改 Nginx 配置，移除 SSL 相关配置。
+```bash
+docker compose logs cloudflared
+```
+
+确认日志中出现 `Registered tunnel connection`，Tunnel 状态为 Healthy。
