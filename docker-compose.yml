@@ -24,6 +24,7 @@ services:
     restart: unless-stopped
     env_file: ./backend/.env
     volumes:
+      - ./backend/app:/app/app
       - ./uploads:/app/uploads
     depends_on:
       db:
