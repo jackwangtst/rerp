@@ -27,6 +27,13 @@ const menuItems = [
     ],
   },
   {
+    title: '财务管理',
+    icon: 'Money',
+    children: [
+      { title: '支出管理', path: '/finance/expenses' },
+    ],
+  },
+  {
     title: '任务管理',
     icon: 'Calendar',
     children: [

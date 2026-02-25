@@ -587,4 +587,28 @@ CREATE TABLE price_catalog (
 CREATE TRIGGER trg_price_catalog_updated_at
     BEFORE UPDATE ON price_catalog
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- ============================================================
+-- 支出管理
+-- ============================================================
+
+CREATE TABLE expense (
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    contract_id     UUID        REFERENCES contract(id) ON DELETE SET NULL,
+    customer_id     UUID        REFERENCES customer(id) ON DELETE SET NULL,
+    project_id      UUID        REFERENCES cert_project(id) ON DELETE SET NULL,
+    expense_type    VARCHAR(50) NOT NULL,   -- 认证费/差旅/代理费/测试费/其他
+    amount          NUMERIC(12,2) NOT NULL,
+    vendor          VARCHAR(100),           -- 付给谁
+    paid_at         DATE        NOT NULL,
+    remark          TEXT,
+    created_by      UUID        REFERENCES sys_user(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TRIGGER trg_expense_updated_at
+    BEFORE UPDATE ON expense
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 --   project_no   = 'PRJ-' || to_char(NOW(), 'YYYY') || '-' || lpad(nextval('seq_project_no')::text, 4, '0')

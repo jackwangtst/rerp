@@ -72,6 +72,13 @@ const router = createRouter({
           component: () => import('@/views/contract/PaymentList.vue'),
           meta: { title: '收款管理' },
         },
+        // 财务管理
+        {
+          path: 'finance/expenses',
+          name: 'Expenses',
+          component: () => import('@/views/finance/ExpenseList.vue'),
+          meta: { title: '支出管理' },
+        },
         // 任务管理
         {
           path: 'projects',

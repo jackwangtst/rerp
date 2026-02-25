@@ -7,3 +7,4 @@ from app.models.quotation import Quotation  # noqa: F401
 from app.models.contract import Contract, ContractItem, PaymentPlan, PaymentRecord  # noqa: F401
 from app.models.project import CertProject, ProjectTask  # noqa: F401
 from app.models.price_catalog import PriceCatalog  # noqa: F401
+from app.models.expense import Expense  # noqa: F401
