@@ -14,7 +14,6 @@ const menuItems = [
     children: [
       { title: '线索管理', path: '/market/leads' },
       { title: '商机管理', path: '/market/opportunities' },
-      { title: '报价管理', path: '/market/quotations' },
     ],
   },
   { title: '客户管理', path: '/customers', icon: 'OfficeBuilding' },
@@ -22,7 +21,7 @@ const menuItems = [
     title: '合同/付款',
     icon: 'Document',
     children: [
-      { title: '合同管理', path: '/contracts' },
+      { title: '报价管理', path: '/market/quotations' },
       { title: '收款管理', path: '/payments' },
     ],
   },
