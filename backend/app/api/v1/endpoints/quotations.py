@@ -8,6 +8,7 @@ from app.core.security import get_current_user
 from app.core.response import Resp, PageResp
 from app.models.user import SysUser
 from app.models.quotation import Quotation
+from app.models.quotation_payment import QuotationPayment
 from app.models.opportunity import Opportunity
 from app.models.customer import Customer
 from app.schemas.quotation import (
@@ -103,11 +104,44 @@ async def update_quotation(
     quot = (await db.execute(select(Quotation).where(Quotation.id == quot_id))).scalar_one_or_none()
     if not quot:
         raise HTTPException(404, "报价单不存在")
+    old_status = quot.status
     data = body.model_dump(exclude_unset=True)
     if "items" in data:
         data["items"] = _serialize_items(data["items"])
     for field, value in data.items():
         setattr(quot, field, value)
+
+    # 状态变为"已接受"时，自动创建收款记录（若尚未创建）
+    new_status = data.get("status", old_status)
+    if new_status == "已接受" and old_status != "已接受":
+        existing = (await db.execute(
+            select(QuotationPayment).where(QuotationPayment.quotation_id == quot.id)
+        )).scalar_one_or_none()
+        if not existing:
+            # 获取客户名称
+            cname = None
+            if quot.customer_id:
+                cust = (await db.execute(
+                    select(Customer).where(Customer.id == quot.customer_id)
+                )).scalar_one_or_none()
+                cname = cust.company_name if cust else None
+            elif quot.opp_id:
+                opp = (await db.execute(
+                    select(Opportunity).where(Opportunity.id == quot.opp_id)
+                )).scalar_one_or_none()
+                if opp and opp.customer_id:
+                    cust = (await db.execute(
+                        select(Customer).where(Customer.id == opp.customer_id)
+                    )).scalar_one_or_none()
+                    cname = cust.company_name if cust else None
+            db.add(QuotationPayment(
+                quotation_id=quot.id,
+                customer_id=quot.customer_id,
+                quote_no=quot.quote_no,
+                customer_name=cname,
+                total_amount=quot.total_amount,
+            ))
+
     await db.commit()
     await db.refresh(quot)
     return Resp.ok(QuotationOut.model_validate(quot))

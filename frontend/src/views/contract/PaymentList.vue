@@ -1,17 +1,28 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { contractApi, type PaymentPlanListItem, type ContractDetail } from '@/api/contract'
+import request from '@/api/request'
 
-const router = useRouter()
+interface PaymentItem {
+  id: string
+  quotation_id: string
+  quote_no: string
+  customer_name: string | null
+  total_amount: number
+  received_amount: number
+  status: string
+  received_date: string | null
+  payment_method: string | null
+  remark: string | null
+}
 
 const loading = ref(false)
-const list = ref<PaymentPlanListItem[]>([])
+const list = ref<PaymentItem[]>([])
 const total = ref(0)
-const query = reactive({ page: 1, page_size: 20, status: '', keyword: '', overdue: false })
+const query = reactive({ page: 1, page_size: 20, status: '', keyword: '' })
 
-const planStatusOptions = ['待支付', '部分支付', '已支付', '已逾期']
+const statusOptions = ['待收款', '部分收款', '已收款']
+const methodOptions = ['对公转账', '现金', '支票', '其他']
 
 async function loadList() {
   loading.value = true
@@ -19,8 +30,7 @@ async function loadList() {
     const params: Record<string, unknown> = { page: query.page, page_size: query.page_size }
     if (query.status) params.status = query.status
     if (query.keyword) params.keyword = query.keyword
-    if (query.overdue) params.overdue = true
-    const res = await contractApi.listAllPaymentPlans(params as any)
+    const res = await request.get<any, { data: PaymentItem[]; total: number }>('/quotation-payments', { params })
     list.value = res.data
     total.value = res.total
   } finally {
@@ -29,185 +39,161 @@ async function loadList() {
 }
 
 function handleSearch() { query.page = 1; loadList() }
-function handleReset() { query.status = ''; query.keyword = ''; query.overdue = false; query.page = 1; loadList() }
+function handleReset() { query.status = ''; query.keyword = ''; query.page = 1; loadList() }
 
-function goContract(row: PaymentPlanListItem) {
-  router.push(`/contracts/${row.contract_id}`)
-}
-
-// ── 收款弹窗 ────────────────────────────────────────────────
-const collectVisible = ref(false)
-const collectPlan = ref<PaymentPlanListItem | null>(null)
-const collectContract = ref<ContractDetail | null>(null)
-const collectForm = reactive({
+// ── 收款弹窗 ─────────────────────────────────────────────────
+const dialogVisible = ref(false)
+const saving = ref(false)
+const editingItem = ref<PaymentItem | null>(null)
+const form = reactive({
   received_amount: 0,
   received_date: '',
   payment_method: '对公转账',
-  bank_reference: '',
   remark: '',
 })
-const collectSaving = ref(false)
-const paymentMethodOptions = ['对公转账', '现金', '支票', '其他']
 
-async function openCollect(row: PaymentPlanListItem) {
-  collectPlan.value = row
-  const res = await contractApi.get(row.contract_id)
-  collectContract.value = res.data
-  Object.assign(collectForm, {
-    received_amount: Number(row.plan_amount) - Number(row.received_amount),
-    received_date: '',
-    payment_method: '对公转账',
-    bank_reference: '',
-    remark: '',
-  })
-  collectVisible.value = true
+function openCollect(row: PaymentItem) {
+  editingItem.value = row
+  form.received_amount = row.received_amount || row.total_amount
+  form.received_date = new Date().toISOString().slice(0, 10)
+  form.payment_method = row.payment_method || '对公转账'
+  form.remark = row.remark || ''
+  dialogVisible.value = true
 }
 
-async function handleCollect() {
-  if (!collectForm.received_date) { ElMessage.warning('请选择收款日期'); return }
-  if (!collectForm.received_amount) { ElMessage.warning('请填写收款金额'); return }
-  collectSaving.value = true
+async function handleSave() {
+  if (!form.received_date) { ElMessage.warning('请选择收款日期'); return }
+  saving.value = true
   try {
-    await contractApi.addPaymentRecord(collectPlan.value!.contract_id, {
-      plan_id: collectPlan.value!.id,
-      ...collectForm,
+    await request.put(`/quotation-payments/${editingItem.value!.id}`, {
+      received_amount: form.received_amount,
+      received_date: form.received_date,
+      payment_method: form.payment_method,
+      remark: form.remark || null,
     })
     ElMessage.success('收款已登记')
-    collectVisible.value = false
+    dialogVisible.value = false
     loadList()
   } finally {
-    collectSaving.value = false
+    saving.value = false
   }
 }
 
-const planStatusType = (s: string) =>
-  ({ '待支付': 'info', '部分支付': 'warning', '已支付': 'success', '已逾期': 'danger' }[s] ?? '') as any
-
-function isOverdue(row: PaymentPlanListItem) {
-  return row.due_date && row.due_date < new Date().toISOString().slice(0, 10) && row.status !== '已支付'
+function statusTagType(s: string) {
+  if (s === '已收款') return 'success'
+  if (s === '部分收款') return 'warning'
+  return 'info'
 }
 
-onMounted(loadList)
+function fmt(v: number) {
+  return v.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
+onMounted(() => loadList())
 </script>
 
 <template>
-  <div>
-    <el-card shadow="never" style="margin-bottom:16px">
-      <el-row :gutter="12" align="middle">
-        <el-col :span="7">
-          <el-input v-model="query.keyword" placeholder="搜索合同名称/编号" clearable @keyup.enter="handleSearch" />
-        </el-col>
-        <el-col :span="4">
-          <el-select v-model="query.status" placeholder="付款状态" clearable style="width:100%">
-            <el-option v-for="s in planStatusOptions" :key="s" :label="s" :value="s" />
+  <div class="page-container">
+    <div class="page-header">
+      <h2>收款管理</h2>
+    </div>
+
+    <!-- 筛选 -->
+    <el-card shadow="never" style="margin-bottom:12px">
+      <el-form inline>
+        <el-form-item label="状态">
+          <el-select v-model="query.status" clearable placeholder="全部" style="width:110px">
+            <el-option v-for="s in statusOptions" :key="s" :label="s" :value="s" />
           </el-select>
-        </el-col>
-        <el-col :span="3">
-          <el-checkbox v-model="query.overdue" @change="handleSearch">仅逾期</el-checkbox>
-        </el-col>
-        <el-col :span="5">
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
+        </el-form-item>
+        <el-form-item label="客户/报价单号">
+          <el-input v-model="query.keyword" clearable placeholder="搜索" style="width:180px" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
-        </el-col>
-      </el-row>
+        </el-form-item>
+      </el-form>
     </el-card>
 
+    <!-- 列表 -->
     <el-card shadow="never">
-      <el-table :data="list" v-loading="loading" row-key="id" style="width:100%">
-        <el-table-column prop="contract_no" label="合同编号" width="150">
+      <el-table :data="list" v-loading="loading" stripe>
+        <el-table-column label="报价单号" prop="quote_no" width="150" />
+        <el-table-column label="客户" prop="customer_name" min-width="160" />
+        <el-table-column label="合同金额" width="130" align="right">
+          <template #default="{ row }">¥ {{ fmt(row.total_amount) }}</template>
+        </el-table-column>
+        <el-table-column label="已收金额" width="130" align="right">
           <template #default="{ row }">
-            <el-link type="primary" @click="goContract(row)">{{ row.contract_no }}</el-link>
-          </template>
-        </el-table-column>
-        <el-table-column prop="contract_name" label="合同名称" min-width="180" show-overflow-tooltip />
-        <el-table-column label="期次" width="60" align="center">
-          <template #default="{ row }">第{{ row.installment_no }}期</template>
-        </el-table-column>
-        <el-table-column prop="description" label="说明" width="110" />
-        <el-table-column prop="plan_amount" label="计划金额" width="120" align="right">
-          <template #default="{ row }">{{ Number(row.plan_amount).toLocaleString() }}</template>
-        </el-table-column>
-        <el-table-column prop="received_amount" label="已收款" width="120" align="right">
-          <template #default="{ row }">
-            <span :style="{ color: Number(row.received_amount) > 0 ? '#67c23a' : '#909399' }">
-              {{ Number(row.received_amount).toLocaleString() }}
+            <span :style="row.received_amount > 0 ? 'color:#67c23a;font-weight:600' : ''">
+              ¥ {{ fmt(row.received_amount) }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="待收余额" width="120" align="right">
+        <el-table-column label="待收金额" width="130" align="right">
           <template #default="{ row }">
-            <span :style="{ color: (Number(row.plan_amount) - Number(row.received_amount)) > 0 ? '#f56c6c' : '#67c23a' }">
-              {{ (Number(row.plan_amount) - Number(row.received_amount)).toLocaleString() }}
+            <span :style="row.total_amount - row.received_amount > 0 ? 'color:#e6a23c;font-weight:600' : ''">
+              ¥ {{ fmt(row.total_amount - row.received_amount) }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="due_date" label="应付日期" width="110">
+        <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <span :style="{ color: isOverdue(row) ? '#f56c6c' : '' }">{{ row.due_date }}</span>
+            <el-tag :type="statusTagType(row.status)" size="small">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="90" align="center">
+        <el-table-column label="收款日期" prop="received_date" width="110" />
+        <el-table-column label="收款方式" prop="payment_method" width="100" />
+        <el-table-column label="备注" prop="remark" min-width="120" show-overflow-tooltip />
+        <el-table-column label="操作" width="90" fixed="right">
           <template #default="{ row }">
-            <el-tag :type="planStatusType(row.status)" size="small">{{ row.status }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
-          <template #default="{ row }">
-            <el-button
-              v-if="row.status !== '已支付'"
-              size="small" link type="primary"
-              @click="openCollect(row)"
-            >登记收款</el-button>
-            <el-button
-              v-else size="small" link type="success" disabled
-            >已收款</el-button>
+            <el-button link type="primary" @click="openCollect(row)">登记收款</el-button>
           </template>
         </el-table-column>
       </el-table>
-
       <el-pagination
         v-model:current-page="query.page"
         v-model:page-size="query.page_size"
         :total="total"
         layout="total, prev, pager, next"
-        style="margin-top:16px;justify-content:flex-end;display:flex"
-        @change="loadList"
+        style="margin-top:12px;justify-content:flex-end"
+        @current-change="loadList"
       />
     </el-card>
 
-    <!-- 登记收款弹窗 -->
-    <el-dialog v-model="collectVisible" title="登记收款" width="420px" destroy-on-close>
-      <div v-if="collectPlan" style="margin-bottom:12px;color:#606266;font-size:13px">
-        <div>合同：<strong>{{ collectPlan.contract_no }}</strong> {{ collectPlan.contract_name }}</div>
-        <div>第{{ collectPlan.installment_no }}期 {{ collectPlan.description }} —
-          计划 <strong>{{ Number(collectPlan.plan_amount).toLocaleString() }}</strong> 元，
-          已收 <span style="color:#67c23a">{{ Number(collectPlan.received_amount).toLocaleString() }}</span> 元
-        </div>
+    <!-- 收款弹窗 -->
+    <el-dialog v-model="dialogVisible" title="登记收款" width="420px">
+      <div v-if="editingItem" style="margin-bottom:12px;color:#606266;font-size:13px">
+        报价单：<b>{{ editingItem.quote_no }}</b>　客户：<b>{{ editingItem.customer_name }}</b><br/>
+        合同金额：<b>¥ {{ fmt(editingItem.total_amount) }}</b>
       </div>
-      <el-form label-width="80px">
-        <el-form-item label="收款金额">
-          <el-input-number v-model="collectForm.received_amount" :min="0" :precision="2" style="width:100%" />
+      <el-form label-width="90px">
+        <el-form-item label="收款金额" required>
+          <el-input-number v-model="form.received_amount" :min="0" :precision="2" style="width:100%" />
         </el-form-item>
-        <el-form-item label="收款日期">
-          <el-date-picker v-model="collectForm.received_date" type="date" value-format="YYYY-MM-DD"
-            style="width:100%" />
+        <el-form-item label="收款日期" required>
+          <el-date-picker v-model="form.received_date" type="date" value-format="YYYY-MM-DD" style="width:100%" />
         </el-form-item>
-        <el-form-item label="付款方式">
-          <el-select v-model="collectForm.payment_method" style="width:100%">
-            <el-option v-for="m in paymentMethodOptions" :key="m" :label="m" :value="m" />
+        <el-form-item label="收款方式">
+          <el-select v-model="form.payment_method" style="width:100%">
+            <el-option v-for="m in methodOptions" :key="m" :label="m" :value="m" />
           </el-select>
         </el-form-item>
-        <el-form-item label="银行流水号">
-          <el-input v-model="collectForm.bank_reference" placeholder="选填" />
-        </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="collectForm.remark" type="textarea" :rows="2" placeholder="选填" />
+          <el-input v-model="form.remark" type="textarea" :rows="2" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="collectVisible = false">取消</el-button>
-        <el-button type="primary" :loading="collectSaving" @click="handleCollect">确认登记</el-button>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
+
+<style scoped>
+.page-container { padding: 20px; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.page-header h2 { margin: 0; font-size: 20px; }
+</style>

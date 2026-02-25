@@ -611,4 +611,23 @@ CREATE TRIGGER trg_expense_updated_at
     BEFORE UPDATE ON expense
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+CREATE TABLE quotation_payment (
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    quotation_id    UUID        NOT NULL REFERENCES quotation(id) ON DELETE CASCADE,
+    customer_id     UUID        REFERENCES customer(id) ON DELETE SET NULL,
+    quote_no        VARCHAR(50) NOT NULL,
+    customer_name   VARCHAR(200),
+    total_amount    NUMERIC(12,2) NOT NULL,
+    received_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+    status          VARCHAR(20) NOT NULL DEFAULT '待收款',
+    received_date   DATE,
+    payment_method  VARCHAR(20),
+    remark          TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TRIGGER trg_quotation_payment_updated_at
+    BEFORE UPDATE ON quotation_payment
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 --   project_no   = 'PRJ-' || to_char(NOW(), 'YYYY') || '-' || lpad(nextval('seq_project_no')::text, 4, '0')
