@@ -7,7 +7,8 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.lead import Lead
 from app.models.customer import Customer
-from app.models.contract import Contract, PaymentRecord
+from app.models.contract import Contract
+from app.models.quotation_payment import QuotationPayment
 from app.models.project import ProjectTask
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -33,12 +34,13 @@ async def get_stats(
         select(func.count()).select_from(Customer).where(Customer.status == "服务中")
     )
 
-    # 本月新签合同数（本月创建，排除已终止）
+    # 本月新签合同数（本月创建的已接受报价单）
+    from app.models.quotation import Quotation
     contracts_count = await db.scalar(
-        select(func.count()).select_from(Contract).where(
-            extract("year", Contract.created_at) == today.year,
-            extract("month", Contract.created_at) == today.month,
-            Contract.status != "已终止",
+        select(func.count()).select_from(Quotation).where(
+            extract("year", Quotation.created_at) == today.year,
+            extract("month", Quotation.created_at) == today.month,
+            Quotation.status == "已接受",
         )
     )
 
@@ -49,18 +51,18 @@ async def get_stats(
         )
     )
 
-    # 未收款金额 = 合同总额合计 - 已收款合计（排除已终止合同）
-    total_contract_amount = await db.scalar(
-        select(func.coalesce(func.sum(Contract.total_amount), 0)).where(
-            Contract.status != "已终止"
+    # 未收款金额 = quotation_payment 中 total_amount - received_amount 之和（非已收款）
+    total_amount = await db.scalar(
+        select(func.coalesce(func.sum(QuotationPayment.total_amount), 0)).where(
+            QuotationPayment.status != "已收款"
         )
     )
-    total_received_amount = await db.scalar(
-        select(func.coalesce(func.sum(PaymentRecord.received_amount), 0)).join(
-            Contract, PaymentRecord.contract_id == Contract.id
-        ).where(Contract.status != "已终止")
+    received_amount = await db.scalar(
+        select(func.coalesce(func.sum(QuotationPayment.received_amount), 0)).where(
+            QuotationPayment.status != "已收款"
+        )
     )
-    unpaid_amount = float(total_contract_amount or 0) - float(total_received_amount or 0)
+    unpaid_amount = float(total_amount or 0) - float(received_amount or 0)
 
     return {
         "monthly_leads": leads_count or 0,
