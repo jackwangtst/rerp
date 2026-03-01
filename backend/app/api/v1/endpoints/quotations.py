@@ -38,7 +38,7 @@ def _serialize_items(items):
 @router.get("", response_model=PageResp[QuotationListItem])
 async def list_quotations(
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=500),
     status: str | None = None,
     opp_id: str | None = None,
     db: AsyncSession = Depends(get_db),
