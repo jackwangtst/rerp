@@ -62,6 +62,7 @@ BANK_HOLDER = "任域通认证服务（深圳）有限公司"
 
 
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "docs", "logo.png")
+SEAL_PATH = os.path.join(os.path.dirname(__file__), "seal.png")
 
 COUNTRY_ZH: dict[str, str] = {
     'Abu Dhabi': '阿布扎比', 'Afghanistan': '阿富汗', 'Albania': '阿尔巴尼亚',
@@ -423,11 +424,17 @@ def generate_quotation_pdf(
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#aaaaaa")))
     story.append(Spacer(1, 3*mm))
 
-    left_lines = [
-        f"<b>负责人签字&nbsp;&nbsp;&nbsp;&nbsp;公章</b>",
-        f"{COMPANY_ZH}",
-        f"业务员：{sales_person}",
+    left_cell_content = [
+        Paragraph(f"<b>负责人签字&nbsp;&nbsp;&nbsp;&nbsp;公章</b>", S("sc", fontSize=9, alignment=TA_LEFT, leading=15, textColor=colors.HexColor("#1a3a6b"))),
+        Paragraph(f"{COMPANY_ZH}", S("sc2", fontSize=9, alignment=TA_LEFT, leading=15, textColor=colors.HexColor("#1a3a6b"))),
+        Paragraph(f"业务员：{sales_person}", S("sc3", fontSize=9, alignment=TA_LEFT, leading=15, textColor=colors.HexColor("#1a3a6b"))),
     ]
+    seal_path = os.path.normpath(SEAL_PATH)
+    if os.path.exists(seal_path):
+        seal_img = Image(seal_path, width=28*mm, height=28*mm)
+        seal_img.hAlign = "LEFT"
+        left_cell_content.append(seal_img)
+
     right_lines = [
         "<b>授权人签字&nbsp;&nbsp;&nbsp;&nbsp;公司公章</b>",
         customer_name or "",
@@ -436,7 +443,7 @@ def generate_quotation_pdf(
         right_lines.append(deliver_to_address)
 
     sign_data = [
-        [Paragraph("<br/>".join(left_lines),  S("sc", fontSize=9, alignment=TA_LEFT,  leading=15, textColor=colors.HexColor("#1a3a6b"))),
+        [left_cell_content,
          Paragraph("<br/>".join(right_lines), S("cc", fontSize=9, alignment=TA_RIGHT, leading=15))],
     ]
     sign_table = Table(sign_data, colWidths=[W*0.5, W*0.5])
