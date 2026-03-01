@@ -425,9 +425,9 @@ def generate_quotation_pdf(
     story.append(Spacer(1, 3*mm))
 
     left_cell_content = [
-        Paragraph(f"<b>负责人签字&nbsp;&nbsp;&nbsp;&nbsp;公章</b>", S("sc", fontSize=9, alignment=TA_LEFT, leading=15, textColor=colors.HexColor("#1a3a6b"))),
-        Paragraph(f"{COMPANY_ZH}", S("sc2", fontSize=9, alignment=TA_LEFT, leading=15, textColor=colors.HexColor("#1a3a6b"))),
-        Paragraph(f"业务员：{sales_person}", S("sc3", fontSize=9, alignment=TA_LEFT, leading=15, textColor=colors.HexColor("#1a3a6b"))),
+        Paragraph(f"{COMPANY_ZH}", S("sc1", fontSize=9, alignment=TA_LEFT, leading=15, textColor=colors.HexColor("#1a3a6b"))),
+        Paragraph(f"{COMPANY_ADDR}", S("sc2", fontSize=9, alignment=TA_LEFT, leading=15, textColor=colors.HexColor("#1a3a6b"))),
+        Paragraph(f"<b>负责人签字&nbsp;&nbsp;&nbsp;&nbsp;公章</b>", S("sc3", fontSize=9, alignment=TA_LEFT, leading=15, textColor=colors.HexColor("#1a3a6b"))),
     ]
     seal_path = os.path.normpath(SEAL_PATH)
     if os.path.exists(seal_path):
