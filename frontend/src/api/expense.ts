@@ -6,8 +6,8 @@ export interface ExpenseListItem {
   amount: number
   vendor: string | null
   paid_at: string
-  contract_id: string | null
-  contract_no: string | null
+  quotation_id: string | null
+  quote_no: string | null
   customer_id: string | null
   customer_name: string | null
   remark: string | null
@@ -15,7 +15,7 @@ export interface ExpenseListItem {
 }
 
 export interface ExpenseCreate {
-  contract_id?: string | null
+  quotation_id?: string | null
   customer_id?: string | null
   project_id?: string | null
   expense_type: string

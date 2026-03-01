@@ -9,7 +9,7 @@ EXPENSE_TYPES = ["认证费", "差旅", "代理费", "测试费", "其他"]
 
 
 class ExpenseBase(BaseModel):
-    contract_id: uuid.UUID | None = None
+    quotation_id: uuid.UUID | None = None
     customer_id: uuid.UUID | None = None
     project_id: uuid.UUID | None = None
     expense_type: str
@@ -24,7 +24,7 @@ class ExpenseCreate(ExpenseBase):
 
 
 class ExpenseUpdate(BaseModel):
-    contract_id: uuid.UUID | None = None
+    quotation_id: uuid.UUID | None = None
     customer_id: uuid.UUID | None = None
     project_id: uuid.UUID | None = None
     expense_type: str | None = None
@@ -39,7 +39,7 @@ class ExpenseOut(ExpenseBase):
     created_by: uuid.UUID | None
     created_at: datetime
     updated_at: datetime
-    contract_no: str | None = None
+    quote_no: str | None = None
     customer_name: str | None = None
     creator_name: str | None = None
 
@@ -52,8 +52,8 @@ class ExpenseListItem(BaseModel):
     amount: Decimal
     vendor: str | None
     paid_at: date
-    contract_id: uuid.UUID | None
-    contract_no: str | None
+    quotation_id: uuid.UUID | None
+    quote_no: str | None
     customer_id: uuid.UUID | None
     customer_name: str | None
     remark: str | None

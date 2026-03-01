@@ -8,8 +8,8 @@ from app.core.security import get_current_user
 from app.core.response import Resp, PageResp
 from app.models.user import SysUser
 from app.models.expense import Expense
-from app.models.contract import Contract
 from app.models.customer import Customer
+from app.models.quotation_payment import QuotationPayment
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseOut, ExpenseListItem
 
 router = APIRouter(prefix="/expenses", tags=["支出管理"])
@@ -22,10 +22,10 @@ def _to_list_item(e: Expense) -> ExpenseListItem:
         amount=e.amount,
         vendor=e.vendor,
         paid_at=e.paid_at,
-        contract_id=e.contract_id,
-        contract_no=e.contract.contract_no if e.contract else None,
+        quotation_id=e.quotation_id,
+        quote_no=e.quotation.quote_no if e.quotation else None,
         customer_id=e.customer_id,
-        customer_name=e.customer.name if e.customer else None,
+        customer_name=e.customer.company_name if e.customer else None,
         remark=e.remark,
         created_at=e.created_at,
     )
@@ -33,8 +33,8 @@ def _to_list_item(e: Expense) -> ExpenseListItem:
 
 def _to_out(e: Expense) -> ExpenseOut:
     out = ExpenseOut.model_validate(e)
-    out.contract_no = e.contract.contract_no if e.contract else None
-    out.customer_name = e.customer.name if e.customer else None
+    out.quote_no = e.quotation.quote_no if e.quotation else None
+    out.customer_name = e.customer.company_name if e.customer else None
     out.creator_name = e.creator.full_name if e.creator else None
     return out
 
@@ -46,7 +46,7 @@ async def list_expenses(
     page_size: int = Query(20, ge=1, le=100),
     expense_type: str | None = None,
     customer_id: str | None = None,
-    contract_id: str | None = None,
+    quotation_id: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
     db: AsyncSession = Depends(get_db),
@@ -54,15 +54,15 @@ async def list_expenses(
 ):
     from sqlalchemy.orm import selectinload
     q = select(Expense).options(
-        selectinload(Expense.contract),
+        selectinload(Expense.quotation),
         selectinload(Expense.customer),
     )
     if expense_type:
         q = q.where(Expense.expense_type == expense_type)
     if customer_id:
         q = q.where(Expense.customer_id == customer_id)
-    if contract_id:
-        q = q.where(Expense.contract_id == contract_id)
+    if quotation_id:
+        q = q.where(Expense.quotation_id == quotation_id)
     if date_from:
         q = q.where(Expense.paid_at >= date_from)
     if date_to:
@@ -84,24 +84,21 @@ async def expense_stats(
     _: SysUser = Depends(get_current_user),
 ):
     from sqlalchemy import and_
-    from app.models.contract import PaymentRecord
 
     exp_q = select(func.sum(Expense.amount))
-    rev_q = select(func.sum(PaymentRecord.received_amount))
+    rev_q = select(func.sum(QuotationPayment.received_amount))
 
     filters_exp = []
     filters_rev = []
     if date_from:
         filters_exp.append(Expense.paid_at >= date_from)
-        filters_rev.append(PaymentRecord.paid_at >= date_from)
+        filters_rev.append(QuotationPayment.received_date >= date_from)
     if date_to:
         filters_exp.append(Expense.paid_at <= date_to)
-        filters_rev.append(PaymentRecord.paid_at <= date_to)
+        filters_rev.append(QuotationPayment.received_date <= date_to)
     if customer_id:
         filters_exp.append(Expense.customer_id == customer_id)
-        # 通过 contract 关联 customer
-        rev_q = rev_q.join(Contract, PaymentRecord.contract_id == Contract.id)
-        filters_rev.append(Contract.customer_id == customer_id)
+        filters_rev.append(QuotationPayment.customer_id == customer_id)
 
     if filters_exp:
         exp_q = exp_q.where(and_(*filters_exp))
@@ -142,10 +139,9 @@ async def create_expense(
     db.add(e)
     await db.commit()
     await db.refresh(e)
-    # reload with relations
     e = (await db.execute(
         select(Expense).options(
-            selectinload(Expense.contract),
+            selectinload(Expense.quotation),
             selectinload(Expense.customer),
             selectinload(Expense.creator),
         ).where(Expense.id == e.id)
@@ -170,7 +166,7 @@ async def update_expense(
     await db.commit()
     e = (await db.execute(
         select(Expense).options(
-            selectinload(Expense.contract),
+            selectinload(Expense.quotation),
             selectinload(Expense.customer),
             selectinload(Expense.creator),
         ).where(Expense.id == e.id)

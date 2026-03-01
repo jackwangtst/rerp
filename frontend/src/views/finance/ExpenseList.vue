@@ -74,7 +74,7 @@ const form = reactive({
   amount: 0,
   vendor: '',
   paid_at: '',
-  contract_id: '',
+  quotation_id: '',
   customer_id: '',
   remark: '',
 })
@@ -85,7 +85,7 @@ function openCreate() {
   form.amount = 0
   form.vendor = ''
   form.paid_at = new Date().toISOString().slice(0, 10)
-  form.contract_id = ''
+  form.quotation_id = ''
   form.customer_id = ''
   form.remark = ''
   dialogVisible.value = true
@@ -97,7 +97,7 @@ function openEdit(row: ExpenseListItem) {
   form.amount = row.amount
   form.vendor = row.vendor || ''
   form.paid_at = row.paid_at
-  form.contract_id = row.contract_id || ''
+  form.quotation_id = row.quotation_id || ''
   form.customer_id = row.customer_id || ''
   form.remark = row.remark || ''
   dialogVisible.value = true
@@ -115,7 +115,7 @@ async function handleSave() {
       amount: form.amount,
       vendor: form.vendor || null,
       paid_at: form.paid_at,
-      contract_id: form.contract_id || null,
+      quotation_id: form.quotation_id || null,
       customer_id: form.customer_id || null,
       remark: form.remark || null,
     }
@@ -240,7 +240,7 @@ onMounted(() => { loadList(); loadStats(); loadCustomers(); loadQuotations() })
           </template>
         </el-table-column>
         <el-table-column label="供应商/付给" prop="vendor" min-width="120" />
-        <el-table-column label="关联合同" prop="contract_no" width="140" />
+        <el-table-column label="关联报价单" prop="quote_no" width="140" />
         <el-table-column label="关联客户" prop="customer_name" min-width="140" />
         <el-table-column label="备注" prop="remark" min-width="160" show-overflow-tooltip />
         <el-table-column label="操作" width="120" fixed="right">
@@ -283,7 +283,7 @@ onMounted(() => { loadList(); loadStats(); loadCustomers(); loadQuotations() })
           </el-select>
         </el-form-item>
         <el-form-item label="关联报价单">
-          <el-select v-model="form.contract_id" clearable filterable placeholder="选择已接受的报价单" style="width:100%">
+          <el-select v-model="form.quotation_id" clearable filterable placeholder="选择已接受的报价单" style="width:100%">
             <el-option v-for="q in quotationOptions" :key="q.id" :label="q.quote_no" :value="q.id" />
           </el-select>
         </el-form-item>

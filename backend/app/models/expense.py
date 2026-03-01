@@ -12,8 +12,8 @@ from app.models.base import UUIDMixin, TimestampMixin
 class Expense(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "expense"
 
-    contract_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("contract.id", ondelete="SET NULL")
+    quotation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("quotation.id", ondelete="SET NULL")
     )
     customer_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("customer.id", ondelete="SET NULL")
@@ -30,6 +30,6 @@ class Expense(Base, UUIDMixin, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("sys_user.id", ondelete="SET NULL")
     )
 
-    contract = relationship("Contract", foreign_keys=[contract_id], lazy="select")
+    quotation = relationship("Quotation", foreign_keys=[quotation_id], lazy="select")
     customer = relationship("Customer", foreign_keys=[customer_id], lazy="select")
     creator = relationship("SysUser", foreign_keys=[created_by], lazy="select")
