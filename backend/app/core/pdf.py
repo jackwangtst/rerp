@@ -436,11 +436,11 @@ def generate_quotation_pdf(
         left_cell_content.append(seal_img)
 
     right_lines = [
-        "<b>授权人签字&nbsp;&nbsp;&nbsp;&nbsp;公司公章</b>",
         customer_name or "",
     ]
     if deliver_to_address:
         right_lines.append(deliver_to_address)
+    right_lines.append("<b>授权人签字&nbsp;&nbsp;&nbsp;&nbsp;公司公章</b>")
 
     sign_data = [
         [left_cell_content,
