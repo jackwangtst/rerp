@@ -2,6 +2,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { expenseApi, type ExpenseListItem, type ExpenseStats } from '@/api/expense'
+import { customerApi, type CustomerListItem } from '@/api/customer'
+import { quotationApi, type QuotationListItem } from '@/api/quotation'
 
 const EXPENSE_TYPES = ['认证费', '差旅', '代理费', '测试费', '其他']
 
@@ -48,6 +50,19 @@ async function loadStats() {
   if (query.date_from) params.date_from = query.date_from
   if (query.date_to) params.date_to = query.date_to
   stats.value = await expenseApi.stats(params)
+}
+
+// ── 客户 & 报价单选项 ──────────────────────────────────────────
+const customerOptions = ref<CustomerListItem[]>([])
+const quotationOptions = ref<QuotationListItem[]>([])
+
+async function loadCustomers() {
+  const res = await customerApi.list({ page: 1, page_size: 200 })
+  customerOptions.value = res.data
+}
+async function loadQuotations() {
+  const res = await quotationApi.list({ page: 1, page_size: 200, status: '已接受' })
+  quotationOptions.value = res.data as QuotationListItem[]
 }
 
 // ── 弹窗 ─────────────────────────────────────────────────────
@@ -127,11 +142,18 @@ async function handleDelete(row: ExpenseListItem) {
   loadStats()
 }
 
+function typeTagType(t: string) {
+  const map: Record<string, string> = {
+    '认证费': 'primary', '差旅': 'warning', '代理费': 'success', '测试费': 'info', '其他': '',
+  }
+  return map[t] || ''
+}
+
 function fmt(val: number) {
   return val.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
-onMounted(() => { loadList(); loadStats() })
+onMounted(() => { loadList(); loadStats(); loadCustomers(); loadQuotations() })
 </script>
 
 <template>
@@ -255,6 +277,16 @@ onMounted(() => { loadList(); loadStats() })
         <el-form-item label="供应商">
           <el-input v-model="form.vendor" placeholder="付给谁" />
         </el-form-item>
+        <el-form-item label="关联客户">
+          <el-select v-model="form.customer_id" clearable filterable placeholder="选择客户" style="width:100%">
+            <el-option v-for="c in customerOptions" :key="c.id" :label="c.company_name" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关联报价单">
+          <el-select v-model="form.contract_id" clearable filterable placeholder="选择已接受的报价单" style="width:100%">
+            <el-option v-for="q in quotationOptions" :key="q.id" :label="q.quote_no" :value="q.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="form.remark" type="textarea" :rows="2" />
         </el-form-item>
@@ -266,20 +298,6 @@ onMounted(() => { loadList(); loadStats() })
     </el-dialog>
   </div>
 </template>
-
-<script lang="ts">
-function typeTagType(t: string) {
-  const map: Record<string, string> = {
-    '认证费': 'primary',
-    '差旅': 'warning',
-    '代理费': 'success',
-    '测试费': 'info',
-    '其他': '',
-  }
-  return map[t] || ''
-}
-export default { name: 'ExpenseList' }
-</script>
 
 <style scoped>
 .page-container { padding: 20px; }
