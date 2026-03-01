@@ -436,6 +436,7 @@ def generate_quotation_pdf(
         left_cell_content.append(seal_img)
 
     right_lines = [
+        "<b>客户信息</b>",
         customer_name or "",
     ]
     if deliver_to_address:
