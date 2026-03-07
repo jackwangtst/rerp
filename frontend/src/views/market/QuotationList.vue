@@ -158,6 +158,29 @@ function certOptionsForRow(item: typeof form.items[0]): PriceCatalogSearchItem[]
   return catalogByCountry.value[item.country] ?? []
 }
 
+async function onCertNameBlur(item: typeof form.items[0]) {
+  const name = item.name?.trim()
+  if (!name || !item.country) return
+  const existing = certOptionsForRow(item).find(c => c.name === name)
+  if (existing) return
+  // 新名称，写入价格目录
+  const res = await priceCatalogApi.create({ country: item.country, name })
+  const newEntry = res.data
+  catalogByCountry.value[item.country] = [
+    ...(catalogByCountry.value[item.country] ?? []),
+    {
+      id: newEntry.id,
+      country: newEntry.country,
+      name: newEntry.name,
+      based_on_report: null,
+      lead_weeks: null,
+      includes_testing: null,
+      series_apply: null,
+      ref_price: null,
+    },
+  ]
+}
+
 const oppOptions = ref<OppListItem[]>([])
 const oppLoading = ref(false)
 async function searchOpps(keyword: string) {
@@ -577,22 +600,20 @@ onMounted(() => { loadList(); loadCountries(); loadAllCustomers() })
           </el-table-column>
           <el-table-column label="认证项目" min-width="150">
             <template #default="{ row }">
-              <el-select
+              <el-autocomplete
                 v-model="row.name"
                 size="small"
                 style="width:100%"
-                filterable
-                allow-create
-                placeholder="选择认证项目"
-                @change="(val: string) => { const opt = certOptionsForRow(row).find(i => i.name === val); if (opt) onCertSelect(row, opt) }"
-              >
-                <el-option
-                  v-for="c in certOptionsForRow(row)"
-                  :key="c.id"
-                  :label="c.name"
-                  :value="c.name"
-                />
-              </el-select>
+                :fetch-suggestions="(q: string, cb: (r: {value: string, item: any}[]) => void) => {
+                  const opts = certOptionsForRow(row)
+                  const filtered = q ? opts.filter(c => c.name.includes(q)) : opts
+                  cb(filtered.map(c => ({ value: c.name, item: c })))
+                }"
+                placeholder="选择或输入认证项目"
+                clearable
+                @select="({ item }: { item: any }) => onCertSelect(row, item)"
+                @blur="onCertNameBlur(row)"
+              />
             </template>
           </el-table-column>
           <el-table-column label="认证标准" width="110">
@@ -705,8 +726,8 @@ onMounted(() => { loadList(); loadCountries(); loadAllCustomers() })
 
         <el-table :data="activeQuot.items" size="small" border style="margin-bottom:10px">
           <el-table-column type="index" label="No" width="45" align="center" />
-          <el-table-column prop="country" label="国家" width="80" align="center">
-            <template #default="{ row }">{{ row.country ? countryLabel(row.country) : '-' }}</template>
+          <el-table-column prop="country" label="国家" width="120" align="center">
+            <template #default="{ row }">{{ row.country ? countryLabel(row.country) : '' }}</template>
           </el-table-column>
           <el-table-column prop="name" label="认证项目" min-width="120" />
           <el-table-column prop="standard" label="认证标准" width="110" align="center" />
@@ -724,6 +745,9 @@ onMounted(() => { loadList(); loadCountries(); loadAllCustomers() })
           </el-table-column>
           <el-table-column prop="amount" label="金额(元)" width="110" align="right">
             <template #default="{ row }">{{ Number(row.amount).toLocaleString() }}</template>
+          </el-table-column>
+          <el-table-column prop="item_remark" label="备注" min-width="100">
+            <template #default="{ row }">{{ row.item_remark || '' }}</template>
           </el-table-column>
         </el-table>
 
