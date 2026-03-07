@@ -159,6 +159,7 @@ function certOptionsForRow(item: typeof form.items[0]): PriceCatalogSearchItem[]
 }
 
 async function onCertNameBlur(item: typeof form.items[0]) {
+  await new Promise(r => setTimeout(r, 150))
   const name = item.name?.trim()
   if (!name || !item.country) return
   const existing = certOptionsForRow(item).find(c => c.name === name)
