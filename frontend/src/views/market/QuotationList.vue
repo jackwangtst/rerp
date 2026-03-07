@@ -245,6 +245,7 @@ function handleSearch() { query.page = 1; loadList() }
 function handleReset() { query.status = ''; query.page = 1; loadList() }
 
 function openCreate() {
+  loadCountries()
   editId.value = null
   oppOptions.value = []
   contactOptions.value = []
@@ -262,6 +263,7 @@ function openCreate() {
 }
 
 async function openEdit(row: QuotationListItem) {
+  loadCountries()
   const res = await quotationApi.get(row.id)
   const d = res.data
   editId.value = d.id
