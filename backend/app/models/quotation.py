@@ -29,7 +29,7 @@ class Quotation(Base, UUIDMixin, TimestampMixin):
     #   "cb_required": "Y",        # 是否需要CB
     #   "local_testing": "N",      # 是否本地测试
     #   "models": "2款型号",        # 型号/证书数量
-    #   "months": 3,               # 认证周期（月）
+    #   "weeks": 3,                # 认证周期（周）
     #   "unit_price": 8000,
     #   "discount": 1.0,
     #   "amount": 8000

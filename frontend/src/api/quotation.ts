@@ -5,7 +5,7 @@ export interface QuotationItem {
   name: string
   standard: string | null
   lr_or_not: string | null
-  months: number | null
+  weeks: number | null
   local_testing: string | null
   models: string | null
   unit_price: number

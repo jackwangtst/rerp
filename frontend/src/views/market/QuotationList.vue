@@ -29,7 +29,7 @@ const form = reactive({
   remark: '',
   items: [] as {
     country: string; name: string; standard: string
-    lr_or_not: string; months: number | null; local_testing: string; models: string
+    lr_or_not: string; weeks: number | null; local_testing: string; models: string
     unit_price: number; discount: number; amount: number; item_remark: string
   }[],
 })
@@ -146,7 +146,7 @@ function onCountryChange(item: typeof form.items[0]) {
 function onCertSelect(item: typeof form.items[0], catalog: PriceCatalogSearchItem) {
   item.lr_or_not = catalog.based_on_report ?? item.lr_or_not
   item.local_testing = catalog.includes_testing ?? item.local_testing
-  if (catalog.lead_weeks) item.months = Math.ceil(catalog.lead_weeks / 4.33)
+  if (catalog.lead_weeks) item.weeks = catalog.lead_weeks
   if (catalog.ref_price != null) {
     item.unit_price = Number(catalog.ref_price)
     recalcItem(item)
@@ -222,7 +222,7 @@ function recalcItem(item: typeof form.items[0]) {
 function addItem() {
   form.items.push({
     country: '', name: '', standard: '',
-    lr_or_not: 'N', months: null, local_testing: 'N', models: '',
+    lr_or_not: 'N', weeks: null, local_testing: 'N', models: '',
     unit_price: 0, discount: 1, amount: 0, item_remark: '',
   })
 }
@@ -255,7 +255,7 @@ function openCreate() {
     product_name: '', product_model: '', payment_terms: '', remark: '',
     items: [{
       country: '', name: '', standard: '',
-      lr_or_not: 'N', months: null, local_testing: 'N', models: '',
+      lr_or_not: 'N', weeks: null, local_testing: 'N', models: '',
       unit_price: 0, discount: 1, amount: 0, item_remark: '',
     }],
   })
@@ -295,7 +295,7 @@ async function openEdit(row: QuotationListItem) {
       name: i.name ?? '',
       standard: i.standard ?? '',
       lr_or_not: i.lr_or_not ?? 'N',
-      months: i.months ?? null,
+      weeks: i.weeks ?? null,
       local_testing: i.local_testing ?? 'N',
       models: i.models ?? '',
       unit_price: Number(i.unit_price) ?? 0,
@@ -333,7 +333,7 @@ async function handleSave() {
         country: i.country || null,
         standard: i.standard || null,
         models: i.models || null,
-        months: i.months || null,
+        weeks: i.weeks || null,
         item_remark: i.item_remark || null,
       })),
     }
@@ -604,9 +604,9 @@ onMounted(() => { loadList(); loadCountries(); loadAllCustomers() })
               </el-select>
             </template>
           </el-table-column>
-          <el-table-column label="周期(月)" width="78">
+          <el-table-column label="周期(周)" width="78">
             <template #default="{ row }">
-              <el-input-number v-model="row.months" :min="1" size="small" style="width:70px" controls-position="right" />
+              <el-input-number v-model="row.weeks" :min="1" size="small" style="width:70px" controls-position="right" />
             </template>
           </el-table-column>
           <el-table-column label="本地测试" width="82" align="center">
@@ -712,8 +712,8 @@ onMounted(() => { loadList(); loadCountries(); loadAllCustomers() })
           <el-table-column prop="lr_or_not" label="LR当地代表" width="80" align="center">
             <template #default="{ row }">{{ row.lr_or_not || '-' }}</template>
           </el-table-column>
-          <el-table-column prop="months" label="周期(月)" width="70" align="center">
-            <template #default="{ row }">{{ row.months || '-' }}</template>
+          <el-table-column prop="weeks" label="周期(周)" width="70" align="center">
+            <template #default="{ row }">{{ row.weeks || '-' }}</template>
           </el-table-column>
           <el-table-column prop="local_testing" label="本地测试" width="70" align="center">
             <template #default="{ row }">{{ row.local_testing || '-' }}</template>

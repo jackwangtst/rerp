@@ -11,7 +11,7 @@ class QuotationItem(BaseModel):
     lr_or_not: str | None = None        # 是否需要当地代表LR: Y/N
     local_testing: str | None = None    # 是否本地测试: Y/N
     models: str | None = None           # 型号/证书数量描述
-    months: int | None = None           # 认证周期（月）
+    weeks: int | None = None            # 认证周期（周）
     unit_price: Decimal
     discount: Decimal = Decimal("1.0")
     amount: Decimal

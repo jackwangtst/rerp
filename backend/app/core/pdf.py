@@ -277,7 +277,7 @@ def generate_quotation_pdf(
     # 各列按数据是否存在动态显示（Country/LR/Lead time/Local testing/Serie models）
     has_country = any(i.get("country") for i in items)
     has_lr      = any(i.get("lr_or_not") is not None for i in items)
-    has_months  = any(i.get("months") for i in items)
+    has_weeks   = any(i.get("weeks") for i in items)
     has_local   = any(i.get("local_testing") is not None for i in items)
     has_models  = any(i.get("models") for i in items)
     has_remark  = any(i.get("item_remark") for i in items)
@@ -289,8 +289,8 @@ def generate_quotation_pdf(
     headers.append("Certification\n认证项目");     col_w.append(W * 0.22)
     if has_lr:
         headers.append("LR or not\n当地代表");     col_w.append(W * 0.08)
-    if has_months:
-        headers.append("Lead time\n周期");         col_w.append(W * 0.07)
+    if has_weeks:
+        headers.append("Lead time\n周期(周)");      col_w.append(W * 0.07)
     if has_local:
         headers.append("Local testing\n本地测试");   col_w.append(W * 0.08)
     if has_models:
@@ -309,8 +309,8 @@ def generate_quotation_pdf(
         row.append(Paragraph(item.get("name", ""), s_td_l))
         if has_lr:
             row.append(Paragraph(item.get("lr_or_not") or "-", s_td_c))
-        if has_months:
-            row.append(Paragraph(str(item.get("months") or "-"), s_td_c))
+        if has_weeks:
+            row.append(Paragraph(str(item.get("weeks") or "-"), s_td_c))
         if has_local:
             row.append(Paragraph(item.get("local_testing") or "-", s_td_c))
         if has_models:
