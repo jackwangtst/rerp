@@ -158,30 +158,6 @@ function certOptionsForRow(item: typeof form.items[0]): PriceCatalogSearchItem[]
   return catalogByCountry.value[item.country] ?? []
 }
 
-async function onCertNameBlur(item: typeof form.items[0]) {
-  await new Promise(r => setTimeout(r, 150))
-  const name = item.name?.trim()
-  if (!name || !item.country) return
-  const existing = certOptionsForRow(item).find(c => c.name === name)
-  if (existing) return
-  // 新名称，写入价格目录
-  const res = await priceCatalogApi.create({ country: item.country, name })
-  const newEntry = res.data
-  catalogByCountry.value[item.country] = [
-    ...(catalogByCountry.value[item.country] ?? []),
-    {
-      id: newEntry.id,
-      country: newEntry.country,
-      name: newEntry.name,
-      based_on_report: null,
-      lead_weeks: null,
-      includes_testing: null,
-      series_apply: null,
-      ref_price: null,
-    },
-  ]
-}
-
 const oppOptions = ref<OppListItem[]>([])
 const oppLoading = ref(false)
 async function searchOpps(keyword: string) {
@@ -613,7 +589,6 @@ onMounted(() => { loadList(); loadCountries(); loadAllCustomers() })
                 placeholder="选择或输入认证项目"
                 clearable
                 @select="({ item }: { item: any }) => onCertSelect(row, item)"
-                @blur="onCertNameBlur(row)"
               />
             </template>
           </el-table-column>
