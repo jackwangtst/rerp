@@ -341,7 +341,7 @@ def generate_quotation_pdf(
         table_data.append(row)
 
     # 合计行：合并到 Price 列前，Price 列显示金额，备注列（若有）留空
-    price_col_idx = headers.index("Price(RMB)")
+    price_col_idx = headers.index("Price(RMB)\n价格")
     span_to = price_col_idx - 1
     total_row = (
         [Paragraph("合计 Total", s_td_c)] +
