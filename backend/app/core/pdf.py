@@ -285,20 +285,40 @@ def generate_quotation_pdf(
     headers = ["No"]
     col_w   = [W * 0.04]
     if has_country:
-        headers.append("Country\n国家");           col_w.append(W * 0.09)
-    headers.append("Certification\n认证项目");     col_w.append(W * 0.22)
+        headers.append("Country\n国家");           col_w.append(W * 0.10)
     if has_lr:
-        headers.append("LR or not\n当地代表");     col_w.append(W * 0.08)
+        col_w_lr = W * 0.08
+    else:
+        col_w_lr = 0
     if has_weeks:
-        headers.append("Lead time\n周期(周)");      col_w.append(W * 0.07)
+        col_w_weeks = W * 0.07
+    else:
+        col_w_weeks = 0
     if has_local:
-        headers.append("Local testing\n本地测试");   col_w.append(W * 0.08)
+        col_w_local = W * 0.08
+    else:
+        col_w_local = 0
     if has_models:
-        headers.append("Serie models/cert\nor one model/cert"); col_w.append(W * 0.14)
-    col_w.append(W * 0.12)
+        col_w_models = W * 0.14
+    else:
+        col_w_models = 0
+    col_w_price  = W * 0.12
+    col_w_remark = W * 0.16 if has_remark else 0
+    col_w_country = W * 0.10 if has_country else 0
+    col_w_cert = W - W * 0.04 - col_w_country - col_w_lr - col_w_weeks - col_w_local - col_w_models - col_w_price - col_w_remark
+    headers.append("Certification\n认证项目");     col_w.append(col_w_cert)
+    if has_lr:
+        headers.append("LR or not\n当地代表");     col_w.append(col_w_lr)
+    if has_weeks:
+        headers.append("Lead time\n周期(周)");      col_w.append(col_w_weeks)
+    if has_local:
+        headers.append("Local testing\n本地测试");   col_w.append(col_w_local)
+    if has_models:
+        headers.append("Serie models/cert\nor one model/cert"); col_w.append(col_w_models)
+    col_w.append(col_w_price)
     headers.append("Price(RMB)")
     if has_remark:
-        headers.append("Remark\n备注");            col_w.append(W * 0.16)
+        headers.append("Remark\n备注");            col_w.append(col_w_remark)
 
     table_data = [[Paragraph(h, s_th) for h in headers]]
 
