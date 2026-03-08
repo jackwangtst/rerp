@@ -282,10 +282,10 @@ def generate_quotation_pdf(
     has_models  = any(i.get("models") for i in items)
     has_remark  = any(i.get("item_remark") for i in items)
 
-    headers = ["No"]
-    col_w   = [W * 0.04]
+    headers = ["No\n序号"]
+    col_w   = [W * 0.05]
     if has_country:
-        headers.append("Country\n国家");           col_w.append(W * 0.10)
+        headers.append("Country\n国家");           col_w.append(W * 0.13)
     if has_lr:
         col_w_lr = W * 0.08
     else:
@@ -299,13 +299,13 @@ def generate_quotation_pdf(
     else:
         col_w_local = 0
     if has_models:
-        col_w_models = W * 0.14
+        col_w_models = W * 0.13
     else:
         col_w_models = 0
     col_w_price  = W * 0.12
-    col_w_remark = W * 0.16 if has_remark else 0
-    col_w_country = W * 0.10 if has_country else 0
-    col_w_cert = W - W * 0.04 - col_w_country - col_w_lr - col_w_weeks - col_w_local - col_w_models - col_w_price - col_w_remark
+    col_w_remark = W * 0.15 if has_remark else 0
+    col_w_country = W * 0.13 if has_country else 0
+    col_w_cert = W - W * 0.05 - col_w_country - col_w_lr - col_w_weeks - col_w_local - col_w_models - col_w_price - col_w_remark
     headers.append("Certification\n认证项目");     col_w.append(col_w_cert)
     if has_lr:
         headers.append("LR or not\n当地代表");     col_w.append(col_w_lr)
@@ -316,7 +316,7 @@ def generate_quotation_pdf(
     if has_models:
         headers.append("Serie models/cert\nor one model/cert"); col_w.append(col_w_models)
     col_w.append(col_w_price)
-    headers.append("Price(RMB)")
+    headers.append("Price(RMB)\n价格")
     if has_remark:
         headers.append("Remark\n备注");            col_w.append(col_w_remark)
 
