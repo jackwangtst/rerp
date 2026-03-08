@@ -303,7 +303,7 @@ def generate_quotation_pdf(
     table_data = [[Paragraph(h, s_th) for h in headers]]
 
     for idx, item in enumerate(items, 1):
-        row = [Paragraph(str(idx), s_td_l)]
+        row = [Paragraph(str(idx), s_td_c)]
         if has_country:
             row.append(Paragraph(_country_label(item.get("country") or "-"), s_td_c))
         row.append(Paragraph(item.get("name", ""), s_td_l))
@@ -364,6 +364,7 @@ def generate_quotation_pdf(
         ("ALIGN",        (0, pre_last), (span_to, pre_last), "CENTER"),
         # 网格
         ("GRID",         (0,0), (-1,-1),  0.5, colors.HexColor("#c0c8d8")),
+        ("BOX",          (0,0), (-1,-1),  0.5, colors.HexColor("#aaaaaa")),
         ("VALIGN",       (0,0), (-1,-1),  "MIDDLE"),
     ])
     if discount_amount and float(discount_amount or 0) > 0:
