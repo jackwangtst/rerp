@@ -303,7 +303,7 @@ def generate_quotation_pdf(
     table_data = [[Paragraph(h, s_th) for h in headers]]
 
     for idx, item in enumerate(items, 1):
-        row = [Paragraph(str(idx), s_td_c)]
+        row = [Paragraph(str(idx), s_td_l)]
         if has_country:
             row.append(Paragraph(_country_label(item.get("country") or "-"), s_td_c))
         row.append(Paragraph(item.get("name", ""), s_td_l))
@@ -317,7 +317,7 @@ def generate_quotation_pdf(
             row.append(Paragraph(item.get("models") or "-", s_td_l))
         row.append(Paragraph(f"{float(item.get('amount', 0)):,.0f}", s_td_r))
         if has_remark:
-            row.append(Paragraph(item.get("item_remark") or "", s_td_l))
+            row.append(Paragraph(item.get("item_remark") or "", s_td_r))
         table_data.append(row)
 
     # 合计行：合并到 Price 列前，Price 列显示金额，备注列（若有）留空

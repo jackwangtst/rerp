@@ -703,7 +703,7 @@ onMounted(() => { loadList(); loadCountries(); loadAllCustomers() })
         </el-descriptions>
 
         <el-table :data="activeQuot.items" size="small" border style="width:100%;margin-bottom:10px">
-          <el-table-column type="index" label="No" width="45" align="center" />
+          <el-table-column type="index" label="No" width="45" align="left" />
           <el-table-column prop="country" label="国家" width="120" align="center">
             <template #default="{ row }">{{ row.country ? countryLabel(row.country) : '' }}</template>
           </el-table-column>
@@ -724,7 +724,7 @@ onMounted(() => { loadList(); loadCountries(); loadAllCustomers() })
           <el-table-column prop="amount" label="金额(元)" width="110" align="right">
             <template #default="{ row }">{{ Number(row.amount).toLocaleString() }}</template>
           </el-table-column>
-          <el-table-column prop="item_remark" label="备注" min-width="100">
+          <el-table-column prop="item_remark" label="备注" min-width="100" align="right">
             <template #default="{ row }">{{ row.item_remark || '' }}</template>
           </el-table-column>
         </el-table>
