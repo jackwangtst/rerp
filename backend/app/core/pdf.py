@@ -226,10 +226,9 @@ def generate_quotation_pdf(
     # 报价单号行
     no_data = [[
         Paragraph(f"No. {quote_no}", S("qno", fontSize=9, leading=14)),
-        Paragraph(f"<b>{customer_name}</b>", S("cname", fontSize=9, alignment=TA_CENTER, leading=14)),
         Paragraph(f"DATE: {created_at}  &nbsp;&nbsp; VALID UNTIL: {valid_until}", S("date", fontSize=9, alignment=TA_RIGHT, leading=14)),
     ]]
-    no_table = Table(no_data, colWidths=[W*0.3, W*0.4, W*0.3])
+    no_table = Table(no_data, colWidths=[W*0.5, W*0.5])
     no_table.setStyle(TableStyle([("VALIGN",(0,0),(-1,-1),"MIDDLE"),("TOPPADDING",(0,0),(-1,-1),0),("BOTTOMPADDING",(0,0),(-1,-1),2)]))
     story.append(no_table)
     story.append(Spacer(1, 3*mm))
