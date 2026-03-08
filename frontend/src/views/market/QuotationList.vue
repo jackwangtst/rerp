@@ -702,7 +702,7 @@ onMounted(() => { loadList(); loadCountries(); loadAllCustomers() })
           </el-descriptions-item>
         </el-descriptions>
 
-        <el-table :data="activeQuot.items" size="small" border style="margin-bottom:10px">
+        <el-table :data="activeQuot.items" size="small" border style="width:100%;margin-bottom:10px">
           <el-table-column type="index" label="No" width="45" align="center" />
           <el-table-column prop="country" label="国家" width="120" align="center">
             <template #default="{ row }">{{ row.country ? countryLabel(row.country) : '' }}</template>
