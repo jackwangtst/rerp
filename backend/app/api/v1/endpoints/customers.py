@@ -110,7 +110,7 @@ async def update_customer(
     customer = result.scalar_one_or_none()
     if not customer:
         raise HTTPException(404, "客户不存在")
-    data = body.model_dump(exclude_unset=True)
+    data = body.model_dump(exclude_unset=True, exclude={"contacts"})
     for field in ("unified_social_credit_code", "company_short_name", "legal_representative",
                   "industry", "company_size", "province", "city", "address",
                   "customer_level", "remark"):
@@ -118,6 +118,12 @@ async def update_customer(
             data[field] = None
     for field, value in data.items():
         setattr(customer, field, value)
+    if body.contacts is not None:
+        for c in list(customer.contacts):
+            await db.delete(c)
+        await db.flush()
+        for c in body.contacts:
+            db.add(Contact(customer_id=customer.id, **c.model_dump()))
     await db.commit()
     await db.refresh(customer)
     result2 = await db.execute(

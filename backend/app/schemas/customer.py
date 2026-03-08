@@ -88,6 +88,7 @@ class CustomerUpdate(BaseModel):
     status: str | None = None
     assigned_sales: uuid.UUID | None = None
     remark: str | None = None
+    contacts: list[ContactCreate] | None = None
 
 
 class CustomerOut(CustomerBase):
