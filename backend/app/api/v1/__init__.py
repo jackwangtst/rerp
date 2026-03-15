@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, users, customers, leads, opportunities, quotations, contracts, projects, dashboard, attachments, price_catalog, expenses, quotation_payments
+from app.api.v1.endpoints import auth, users, customers, leads, opportunities, quotations, contracts, projects, dashboard, attachments, price_catalog, expenses, quotation_payments, invoices
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
@@ -17,3 +17,4 @@ api_router.include_router(attachments.router)
 api_router.include_router(price_catalog.router)
 api_router.include_router(expenses.router)
 api_router.include_router(quotation_payments.router)
+api_router.include_router(invoices.router)

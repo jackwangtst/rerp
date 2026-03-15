@@ -9,3 +9,4 @@ from app.models.project import CertProject, ProjectTask  # noqa: F401
 from app.models.price_catalog import PriceCatalog  # noqa: F401
 from app.models.expense import Expense  # noqa: F401
 from app.models.quotation_payment import QuotationPayment, QuotationPaymentRecord  # noqa: F401
+from app.models.invoice import Invoice  # noqa: F401

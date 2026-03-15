@@ -1,6 +1,7 @@
 from datetime import date
-from fastapi import APIRouter, Depends
-from sqlalchemy import select, func, extract
+from typing import Optional
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select, func, extract, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -8,7 +9,8 @@ from app.core.security import get_current_user
 from app.models.lead import Lead
 from app.models.customer import Customer
 from app.models.contract import Contract
-from app.models.quotation_payment import QuotationPayment
+from app.models.quotation_payment import QuotationPayment, QuotationPaymentRecord
+from app.models.invoice import Invoice
 from app.models.project import ProjectTask
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -70,4 +72,69 @@ async def get_stats(
         "monthly_contracts": contracts_count or 0,
         "pending_tasks": tasks_count or 0,
         "unpaid_amount": round(unpaid_amount, 2),
+    }
+
+
+@router.get("/finance-stats")
+async def get_finance_stats(
+    year: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    today = date.today()
+    target_year = year or today.year
+
+    # 全年合同总金额
+    total_contract = await db.scalar(
+        select(func.coalesce(func.sum(QuotationPayment.total_amount), 0))
+    )
+
+    # 全年已收金额
+    total_received = await db.scalar(
+        select(func.coalesce(func.sum(QuotationPayment.received_amount), 0))
+    )
+
+    # 待收金额（各状态下 total - received 之和）
+    total_unpaid = float(total_contract or 0) - float(total_received or 0)
+
+    # 状态分布
+    status_rows = (await db.execute(
+        select(QuotationPayment.status, func.count().label("cnt"))
+        .group_by(QuotationPayment.status)
+    )).all()
+    status_dist = {r.status: r.cnt for r in status_rows}
+
+    # 按月收款（当年，从 quotation_payment_record）
+    monthly_rows = (await db.execute(
+        select(
+            extract("month", QuotationPaymentRecord.received_date).label("month"),
+            func.sum(QuotationPaymentRecord.amount).label("amount"),
+        )
+        .where(extract("year", QuotationPaymentRecord.received_date) == target_year)
+        .group_by("month")
+        .order_by("month")
+    )).all()
+    monthly_received = {int(r.month): float(r.amount) for r in monthly_rows}
+
+    # 补齐 1-12 月
+    monthly_series = [
+        {"month": m, "received": monthly_received.get(m, 0)}
+        for m in range(1, 13)
+    ]
+
+    # 发票统计
+    invoice_status_rows = (await db.execute(
+        select(Invoice.status, func.count().label("cnt"), func.coalesce(func.sum(Invoice.invoice_amount), 0).label("amount"))
+        .group_by(Invoice.status)
+    )).all()
+    invoice_stats = [{"status": r.status, "count": r.cnt, "amount": float(r.amount)} for r in invoice_status_rows]
+
+    return {
+        "total_contract": round(float(total_contract or 0), 2),
+        "total_received": round(float(total_received or 0), 2),
+        "total_unpaid": round(total_unpaid, 2),
+        "status_dist": status_dist,
+        "monthly_series": monthly_series,
+        "invoice_stats": invoice_stats,
+        "year": target_year,
     }

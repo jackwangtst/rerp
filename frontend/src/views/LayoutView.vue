@@ -30,6 +30,8 @@ const menuItems = [
     icon: 'Money',
     children: [
       { title: '支出管理', path: '/finance/expenses' },
+      { title: '发票管理', path: '/finance/invoices' },
+      { title: '财务统计', path: '/finance/stats' },
     ],
   },
   {
