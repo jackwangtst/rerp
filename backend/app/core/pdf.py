@@ -52,13 +52,13 @@ def _fn():
 
 
 # 公司固定信息
-COMPANY_ZH = "任域通认证服务（深圳）有限公司"
-COMPANY_EN = "AnyRegion Certification Service (Shenzhen) Co., Ltd."
+COMPANY_ZH = "任域通技术（深圳）有限公司" 
+COMPANY_EN = "Anyregion Technology（Shenzhen）Co.,Ltd. "
 COMPANY_ADDR = "深圳市龙华区民治街道民强社区鸿荣源博誉府1栋四单元4505"
 COMPANY_TEL = "13510269316"
 BANK_NAME = "中国银行深圳锦绣支行"
 BANK_ACCOUNT = "760174824677"
-BANK_HOLDER = "任域通认证服务（深圳）有限公司"
+BANK_HOLDER = "任域通技术（深圳）有限公司"
 
 
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "docs", "logo.png")
