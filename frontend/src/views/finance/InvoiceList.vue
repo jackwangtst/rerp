@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api/request'
+import AttachmentPanel from '@/components/common/AttachmentPanel.vue'
 
 interface InvoiceItem {
   id: string
@@ -154,11 +155,13 @@ async function handleSave() {
     if (editingId.value) {
       await request.put(`/invoices/${editingId.value}`, payload)
       ElMessage.success('已更新')
+      dialogVisible.value = false
     } else {
-      await request.post('/invoices', payload)
-      ElMessage.success('已创建')
+      const res = await request.post<any, { data: InvoiceItem }>('/invoices', payload)
+      ElMessage.success('已创建，可继续上传发票附件')
+      // 新增成功后切换为编辑模式，允许上传凭证
+      editingId.value = res.data.id
     }
-    dialogVisible.value = false
     loadList()
   } finally {
     saving.value = false
@@ -309,6 +312,14 @@ onMounted(() => loadList())
           <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="可选" />
         </el-form-item>
       </el-form>
+
+      <!-- 凭证上传（保存后可用） -->
+      <div v-if="editingId" style="margin-top:4px;border-top:1px dashed #ebeef5;padding-top:12px">
+        <div style="font-size:13px;color:#606266;margin-bottom:8px;font-weight:600">发票附件</div>
+        <AttachmentPanel entity-type="invoice" :entity-id="editingId" />
+      </div>
+      <div v-else style="font-size:12px;color:#909399;margin-top:8px">保存后可上传发票附件</div>
+
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
