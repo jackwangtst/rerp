@@ -75,6 +75,33 @@ async def create_quotation(
         **data,
     )
     db.add(quotation)
+    await db.flush()
+
+    # 新建时若状态直接为"已接受"，自动创建收款记录
+    if quotation.status == "已接受":
+        cname = None
+        if quotation.customer_id:
+            cust = (await db.execute(
+                select(Customer).where(Customer.id == quotation.customer_id)
+            )).scalar_one_or_none()
+            cname = cust.company_name if cust else None
+        elif quotation.opp_id:
+            opp = (await db.execute(
+                select(Opportunity).where(Opportunity.id == quotation.opp_id)
+            )).scalar_one_or_none()
+            if opp and opp.customer_id:
+                cust = (await db.execute(
+                    select(Customer).where(Customer.id == opp.customer_id)
+                )).scalar_one_or_none()
+                cname = cust.company_name if cust else None
+        db.add(QuotationPayment(
+            quotation_id=quotation.id,
+            customer_id=quotation.customer_id,
+            quote_no=quotation.quote_no,
+            customer_name=cname,
+            total_amount=quotation.total_amount,
+        ))
+
     await db.commit()
     await db.refresh(quotation)
     return Resp.ok(QuotationOut.model_validate(quotation))
