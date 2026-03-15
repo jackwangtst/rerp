@@ -19,6 +19,14 @@ interface InvoiceItem {
   created_at: string
 }
 
+interface PaymentOption {
+  id: string
+  quote_no: string
+  customer_name: string | null
+  total_amount: number
+  received_amount: number
+}
+
 const INVOICE_TYPES = ['增值税普通发票', '增值税专用发票']
 const INVOICE_STATUSES = ['待开具', '已开具', '已邮寄', '已上传']
 
@@ -44,6 +52,38 @@ async function loadList() {
 function handleSearch() { query.page = 1; loadList() }
 function handleReset() { query.status = ''; query.keyword = ''; query.page = 1; loadList() }
 
+// ── 收款记录搜索 ───────────────────────────────────────────────
+const paymentOptions = ref<PaymentOption[]>([])
+const paymentLoading = ref(false)
+const selectedPaymentId = ref<string | null>(null)
+
+async function fetchPayments(keyword: string) {
+  paymentLoading.value = true
+  try {
+    const res = await request.get<any, { data: PaymentOption[] }>('/quotation-payments', {
+      params: { page: 1, page_size: 50, keyword: keyword || undefined },
+    })
+    paymentOptions.value = res.data
+  } finally {
+    paymentLoading.value = false
+  }
+}
+
+function onPaymentSelect(paymentId: string) {
+  selectedPaymentId.value = paymentId
+  const p = paymentOptions.value.find(x => x.id === paymentId)
+  if (p) {
+    form.customer_name = p.customer_name || ''
+    form.quote_no = p.quote_no
+    // 默认填入已收金额（本次开票金额）
+    form.invoice_amount = p.received_amount
+  }
+}
+
+function onPaymentClear() {
+  selectedPaymentId.value = null
+}
+
 // ── 新增/编辑弹窗 ─────────────────────────────────────────────
 const dialogVisible = ref(false)
 const saving = ref(false)
@@ -61,8 +101,9 @@ const form = reactive({
   remark: '',
 })
 
-function openCreate() {
+async function openCreate() {
   editingId.value = null
+  selectedPaymentId.value = null
   Object.assign(form, {
     customer_name: '', quote_no: '', invoice_type: '增值税普通发票',
     invoice_title: '', tax_no: '', invoice_amount: 0,
@@ -70,10 +111,12 @@ function openCreate() {
     status: '待开具', remark: '',
   })
   dialogVisible.value = true
+  await fetchPayments('')
 }
 
 function openEdit(row: InvoiceItem) {
   editingId.value = row.id
+  selectedPaymentId.value = row.payment_id
   Object.assign(form, {
     customer_name: row.customer_name,
     quote_no: row.quote_no || '',
@@ -96,6 +139,7 @@ async function handleSave() {
   saving.value = true
   try {
     const payload = {
+      payment_id: selectedPaymentId.value || null,
       customer_name: form.customer_name,
       quote_no: form.quote_no || null,
       invoice_type: form.invoice_type,
@@ -200,6 +244,36 @@ onMounted(() => loadList())
 
     <el-dialog v-model="dialogVisible" :title="editingId ? '编辑发票' : '新增发票'" width="560px" destroy-on-close>
       <el-form :model="form" label-width="90px">
+
+        <!-- 关联收款记录（新增时可选） -->
+        <el-form-item v-if="!editingId" label="关联收款">
+          <el-select
+            v-model="selectedPaymentId"
+            filterable
+            remote
+            clearable
+            placeholder="搜索报价单号或客户名（可选）"
+            :remote-method="fetchPayments"
+            :loading="paymentLoading"
+            style="width:100%"
+            @change="onPaymentSelect"
+            @clear="onPaymentClear"
+          >
+            <el-option
+              v-for="p in paymentOptions"
+              :key="p.id"
+              :value="p.id"
+              :label="`${p.quote_no}  ${p.customer_name || ''}`"
+            >
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span>{{ p.quote_no }} <span style="color:#909399;font-size:12px">{{ p.customer_name }}</span></span>
+                <span style="color:#67c23a;font-size:12px">已收 ¥{{ p.received_amount.toLocaleString() }}</span>
+              </div>
+            </el-option>
+          </el-select>
+          <div style="font-size:12px;color:#909399;margin-top:4px">选择后自动填入客户名和金额，也可手动填写</div>
+        </el-form-item>
+
         <el-form-item label="客户名称" required>
           <el-input v-model="form.customer_name" placeholder="客户公司名称" />
         </el-form-item>
