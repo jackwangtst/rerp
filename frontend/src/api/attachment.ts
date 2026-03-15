@@ -21,6 +21,7 @@ export function uploadAttachment(entity_type: string, entity_id: string, file: F
   form.append('file', file)
   return request.post<Attachment>(`/attachments?entity_type=${entity_type}&entity_id=${entity_id}`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000, // 上传文件单独用 120 秒超时
   })
 }
 
