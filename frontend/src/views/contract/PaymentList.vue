@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api/request'
+import AttachmentPanel from '@/components/common/AttachmentPanel.vue'
 
 interface PaymentItem {
   id: string
@@ -14,6 +15,16 @@ interface PaymentItem {
   received_date: string | null
   payment_method: string | null
   remark: string | null
+}
+
+interface PaymentRecord {
+  id: string
+  payment_id: string
+  amount: number
+  received_date: string
+  payment_method: string
+  remark: string | null
+  created_at: string
 }
 
 const loading = ref(false)
@@ -41,49 +52,76 @@ async function loadList() {
 function handleSearch() { query.page = 1; loadList() }
 function handleReset() { query.status = ''; query.keyword = ''; query.page = 1; loadList() }
 
-// ── 收款弹窗 ─────────────────────────────────────────────────
+// ── 收款明细弹窗 ──────────────────────────────────────────────
 const dialogVisible = ref(false)
-const saving = ref(false)
+const recordsLoading = ref(false)
+const addingRecord = ref(false)
 const editingItem = ref<PaymentItem | null>(null)
-const form = reactive({
-  received_amount: 0,
+const records = ref<PaymentRecord[]>([])
+const expandedRecordId = ref<string | null>(null)
+const recordForm = reactive({
+  amount: 0,
   received_date: '',
   payment_method: '对公转账',
   remark: '',
 })
+
+async function openRecordsDialog(row: PaymentItem) {
+  editingItem.value = row
+  records.value = []
+  expandedRecordId.value = null
+  recordForm.amount = Math.max(0, row.total_amount - row.received_amount)
+  recordForm.received_date = new Date().toISOString().slice(0, 10)
+  recordForm.payment_method = '对公转账'
+  recordForm.remark = ''
+  dialogVisible.value = true
+  await loadRecords()
+}
+
+async function loadRecords() {
+  recordsLoading.value = true
+  try {
+    const res = await request.get<any, { data: PaymentRecord[] }>(
+      `/quotation-payments/${editingItem.value!.id}/records`
+    )
+    records.value = res.data
+  } finally {
+    recordsLoading.value = false
+  }
+}
+
+async function addRecord() {
+  if (!recordForm.received_date) { ElMessage.warning('请选择收款日期'); return }
+  if (!recordForm.amount || recordForm.amount <= 0) { ElMessage.warning('请填写收款金额'); return }
+  addingRecord.value = true
+  try {
+    await request.post(`/quotation-payments/${editingItem.value!.id}/records`, {
+      amount: recordForm.amount,
+      received_date: recordForm.received_date,
+      payment_method: recordForm.payment_method,
+      remark: recordForm.remark || null,
+    })
+    ElMessage.success('收款已登记')
+    await loadRecords()
+    loadList()
+  } finally {
+    addingRecord.value = false
+  }
+}
+
+async function deleteRecord(rec: PaymentRecord) {
+  await ElMessageBox.confirm('确认删除该收款记录？', '删除确认', { type: 'warning' })
+  await request.delete(`/quotation-payments/${editingItem.value!.id}/records/${rec.id}`)
+  ElMessage.success('已删除')
+  await loadRecords()
+  loadList()
+}
 
 async function handleDelete(row: PaymentItem) {
   await ElMessageBox.confirm('确认删除该收款记录？', '删除确认', { type: 'warning' })
   await request.delete(`/quotation-payments/${row.id}`)
   ElMessage.success('已删除')
   loadList()
-}
-
-function openCollect(row: PaymentItem) {
-  editingItem.value = row
-  form.received_amount = row.received_amount || row.total_amount
-  form.received_date = new Date().toISOString().slice(0, 10)
-  form.payment_method = row.payment_method || '对公转账'
-  form.remark = row.remark || ''
-  dialogVisible.value = true
-}
-
-async function handleSave() {
-  if (!form.received_date) { ElMessage.warning('请选择收款日期'); return }
-  saving.value = true
-  try {
-    await request.put(`/quotation-payments/${editingItem.value!.id}`, {
-      received_amount: form.received_amount,
-      received_date: form.received_date,
-      payment_method: form.payment_method,
-      remark: form.remark || null,
-    })
-    ElMessage.success('收款已登记')
-    dialogVisible.value = false
-    loadList()
-  } finally {
-    saving.value = false
-  }
 }
 
 function statusTagType(s: string) {
@@ -150,12 +188,9 @@ onMounted(() => loadList())
             <el-tag :type="statusTagType(row.status)" size="small">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="收款日期" prop="received_date" width="110" />
-        <el-table-column label="收款方式" prop="payment_method" width="100" />
-        <el-table-column label="备注" prop="remark" min-width="120" show-overflow-tooltip />
         <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openCollect(row)">登记收款</el-button>
+            <el-button link type="primary" @click="openRecordsDialog(row)">收款明细</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -170,31 +205,66 @@ onMounted(() => loadList())
       />
     </el-card>
 
-    <!-- 收款弹窗 -->
-    <el-dialog v-model="dialogVisible" title="登记收款" width="420px">
-      <div v-if="editingItem" style="margin-bottom:12px;color:#606266;font-size:13px">
-        报价单：<b>{{ editingItem.quote_no }}</b>　客户：<b>{{ editingItem.customer_name }}</b><br/>
-        合同金额：<b>¥ {{ fmt(editingItem.total_amount) }}</b>
+    <!-- 收款明细弹窗 -->
+    <el-dialog v-model="dialogVisible" title="收款明细" width="700px" destroy-on-close>
+      <!-- 头部汇总 -->
+      <div v-if="editingItem" style="display:flex;gap:24px;margin-bottom:12px;font-size:13px;color:#606266;background:#f5f7fa;padding:10px 14px;border-radius:4px">
+        <span>报价单：<b>{{ editingItem.quote_no }}</b></span>
+        <span>客户：<b>{{ editingItem.customer_name }}</b></span>
+        <span>合同金额：<b>¥ {{ fmt(editingItem.total_amount) }}</b></span>
+        <span>已收：<b style="color:#67c23a">¥ {{ fmt(editingItem.received_amount) }}</b></span>
+        <span>待收：<b style="color:#e6a23c">¥ {{ fmt(editingItem.total_amount - editingItem.received_amount) }}</b></span>
       </div>
-      <el-form label-width="90px">
-        <el-form-item label="收款金额" required>
-          <el-input-number v-model="form.received_amount" :min="0" :precision="2" style="width:100%" />
+
+      <!-- 历史收款记录 -->
+      <div v-loading="recordsLoading" style="min-height:60px">
+        <el-empty v-if="!recordsLoading && records.length === 0" description="暂无收款记录" :image-size="60" />
+        <div v-for="rec in records" :key="rec.id" style="margin-bottom:8px;border:1px solid #ebeef5;border-radius:4px;padding:8px 12px">
+          <el-row :gutter="8" align="middle">
+            <el-col :span="4" style="font-size:13px">{{ rec.received_date }}</el-col>
+            <el-col :span="4" style="font-weight:600;color:#67c23a;font-size:13px">¥ {{ fmt(rec.amount) }}</el-col>
+            <el-col :span="4" style="font-size:13px">{{ rec.payment_method }}</el-col>
+            <el-col :span="7" style="color:#909399;font-size:12px">{{ rec.remark || '-' }}</el-col>
+            <el-col :span="3" style="text-align:right">
+              <el-button link size="small" @click="expandedRecordId = expandedRecordId === rec.id ? null : rec.id">
+                {{ expandedRecordId === rec.id ? '收起凭证' : '查看凭证' }}
+              </el-button>
+            </el-col>
+            <el-col :span="2" style="text-align:right">
+              <el-button link type="danger" size="small" @click="deleteRecord(rec)">删除</el-button>
+            </el-col>
+          </el-row>
+          <div v-if="expandedRecordId === rec.id" style="margin-top:8px;border-top:1px dashed #ebeef5;padding-top:8px">
+            <AttachmentPanel entity-type="payment_record" :entity-id="rec.id" />
+          </div>
+        </div>
+      </div>
+
+      <el-divider>登记新收款</el-divider>
+
+      <!-- 新增收款表单 -->
+      <el-form :inline="true" label-width="70px">
+        <el-form-item label="金额" required>
+          <el-input-number v-model="recordForm.amount" :min="0.01" :precision="2" style="width:130px" controls-position="right" />
         </el-form-item>
-        <el-form-item label="收款日期" required>
-          <el-date-picker v-model="form.received_date" type="date" value-format="YYYY-MM-DD" style="width:100%" />
+        <el-form-item label="日期" required>
+          <el-date-picker v-model="recordForm.received_date" type="date" value-format="YYYY-MM-DD" style="width:140px" />
         </el-form-item>
-        <el-form-item label="收款方式">
-          <el-select v-model="form.payment_method" style="width:100%">
+        <el-form-item label="方式">
+          <el-select v-model="recordForm.payment_method" style="width:110px">
             <el-option v-for="m in methodOptions" :key="m" :label="m" :value="m" />
           </el-select>
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="form.remark" type="textarea" :rows="2" />
+          <el-input v-model="recordForm.remark" style="width:130px" placeholder="可选" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :loading="addingRecord" @click="addRecord">添加</el-button>
         </el-form-item>
       </el-form>
+
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+        <el-button @click="dialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>

@@ -35,3 +35,27 @@ class QuotationPayment(Base, UUIDMixin):
     )
 
     quotation: Mapped["Quotation"] = relationship("Quotation")  # type: ignore[name-defined]
+    records: Mapped[list["QuotationPaymentRecord"]] = relationship(
+        "QuotationPaymentRecord", back_populates="payment",
+        cascade="all, delete-orphan", order_by="QuotationPaymentRecord.received_date.desc()"
+    )
+
+
+class QuotationPaymentRecord(Base, UUIDMixin):
+    __tablename__ = "quotation_payment_record"
+
+    payment_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("quotation_payment.id", ondelete="CASCADE"), nullable=False
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    received_date: Mapped[date] = mapped_column(Date, nullable=False)
+    payment_method: Mapped[str] = mapped_column(String(20), nullable=False)
+    remark: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sys_user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    payment: Mapped["QuotationPayment"] = relationship("QuotationPayment", back_populates="records")
